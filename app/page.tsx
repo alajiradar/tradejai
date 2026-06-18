@@ -3,7 +3,7 @@
 
 import { useState, useEffect } from "react";
 import { useTrades } from "../hooks/useTrades";
-import { MetricsGrid } from "../components/MetricsGrid";
+import  MetricsGrid  from "../components/MetricsGrid";
 import { EquityChart } from "../components/EquityChart";
 import { TradeForm } from "../components/TradeForm";
 import { TradeTable } from "../components/TradeTable";
@@ -78,13 +78,8 @@ export default function Home() {
 
       {/* STAGE 1 PERFORMANCE OVERVIEW */}
       <div className="w-full max-w-6xl grid grid-cols-1 lg:grid-cols-12 gap-4 mt-6 px-2">
-        <MetricsGrid 
-          netPnl={netPnl} 
-          winRate={winRate} 
-          profitFactor={profitFactor} 
-          totalTrades={totalTrades} 
-          isDark={isDark} 
-        />
+        <MetricsGrid trades={allTrades} />
+           
         <EquityChart 
           equityCurveData={equityCurveData} 
           isDark={isDark} 
