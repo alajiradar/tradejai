@@ -1,48 +1,45 @@
-// components/MetricsGrid.tsx
-"use client";
+import React from 'react';
 
-interface MetricsGridProps {
-  netPnl: number;
-  winRate: string;
-  profitFactor: string;
-  totalTrades: number;
-  isDark: boolean;
+interface MetricsProps {
+  trades: any[]; // Za mu daidaita ainihin bayanan daga baya
 }
 
-export function MetricsGrid({ netPnl, winRate, profitFactor, totalTrades, isDark }: MetricsGridProps) {
+export default function MetricsGrid({ trades }: MetricsProps) {
+  // Dan jauran lissafi na jiran gaske (Za mu hada da Supabase daga baya)
+  const stats = [
+    { title: 'Net P&L', value: '+$2,700.00', color: 'text-emerald-400', bg: 'bg-emerald-500/10', desc: 'Live Equity Line Included' },
+    { title: 'Win Rate', value: '66.7%', color: 'text-blue-400', bg: 'bg-blue-500/10', desc: '+2.3% from last week' },
+    { title: 'Profit Factor', value: '4.00', color: 'text-amber-400', bg: 'bg-amber-500/10', desc: 'Healthy expectancy' },
+    { title: 'Total Trades', value: '9', color: 'text-slate-300', bg: 'bg-slate-500/10', desc: 'All assets logged' },
+    { title: 'Total Win', value: '6', color: 'text-emerald-400', bg: 'bg-emerald-500/10', desc: 'Successful closures' },
+    { title: 'Total Loss', value: '3', color: 'text-rose-400', bg: 'bg-rose-500/10', desc: 'Managed risk trades' },
+    { title: 'Weekly Trades', value: '4', color: 'text-indigo-400', bg: 'bg-indigo-500/10', desc: 'This calendar week' },
+    { title: 'Monthly Trades', value: '9', color: 'text-purple-400', bg: 'bg-purple-500/10', desc: 'Current month cycle' },
+    { title: 'Yearly Trades', value: '48', color: 'text-cyan-400', bg: 'bg-cyan-500/10', desc: 'Total 2026 history' },
+  ];
+
   return (
-    <div className="lg:col-span-5 grid grid-cols-2 gap-4">
-      {/* Card 1: Net P&L */}
-      <div className={`border rounded-xl p-4 shadow-sm flex flex-col justify-center transition-all duration-300 ${isDark ? "bg-slate-900 border-slate-800" : "bg-white border-slate-200"}`}>
-        <span className="block text-[10px] uppercase font-bold tracking-wider opacity-50 mb-1">Net P&L ($)</span>
-        <div className={`text-xl font-black font-mono tracking-tight ${netPnl >= 0 ? "text-emerald-500" : "text-rose-500"}`}>
-          {netPnl >= 0 ? "+" : ""}${netPnl.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-9 gap-4 p-1">
+      {stats.map((item, index) => (
+        <div 
+          key={index} 
+          className={`p-4 rounded-xl border border-slate-800 bg-[#0f1424] hover:border-slate-700 transition-all duration-200 ${
+            item.title === 'Net P&L' ? 'col-span-2 md:col-span-1' : ''
+          }`}
+        >
+          <p className="text-xs font-medium text-slate-400 uppercase tracking-wider">{item.title}</p>
+          <p className={`text-xl md:text-2xl font-bold mt-2 ${item.color}`}>
+            {item.value}
+          </p>
+          
+          {/* Idan Net P&L ne, za mu bar gurbin karamin Sparkline line a nan gaba */}
+          {item.title === 'Net P&L' && (
+            <div className="w-full h-1 bg-slate-800 rounded-full mt-3 overflow-hidden">
+              <div className="w-3/4 h-full bg-emerald-500"></div>
+            </div>
+          )}
         </div>
-      </div>
-
-      {/* Card 2: Win Rate */}
-      <div className={`border rounded-xl p-4 shadow-sm flex flex-col justify-center transition-all duration-300 ${isDark ? "bg-slate-900 border-slate-800" : "bg-white border-slate-200"}`}>
-        <span className="block text-[10px] uppercase font-bold tracking-wider opacity-50 mb-1">Win Rate</span>
-        <div className="text-xl font-black font-mono tracking-tight text-blue-500">
-          {winRate}%
-        </div>
-      </div>
-
-      {/* Card 3: Profit Factor */}
-      <div className={`border rounded-xl p-4 shadow-sm flex flex-col justify-center transition-all duration-300 ${isDark ? "bg-slate-900 border-slate-800" : "bg-white border-slate-200"}`}>
-        <span className="block text-[10px] uppercase font-bold tracking-wider opacity-50 mb-1">Profit Factor</span>
-        <div className={`text-xl font-black font-mono tracking-tight ${parseFloat(profitFactor) >= 1.0 ? "text-amber-500" : "text-slate-400"}`}>
-          {profitFactor}
-        </div>
-      </div>
-
-      {/* Card 4: Total Trades */}
-      <div className={`border rounded-xl p-4 shadow-sm flex flex-col justify-center transition-all duration-300 ${isDark ? "bg-slate-900 border-slate-800" : "bg-white border-slate-200"}`}>
-        <span className="block text-[10px] uppercase font-bold tracking-wider opacity-50 mb-1">Total Trades</span>
-        <div className={`text-xl font-black font-mono tracking-tight ${isDark ? "text-white" : "text-slate-900"}`}>
-          {totalTrades}
-        </div>
-      </div>
+      ))}
     </div>
   );
 }
