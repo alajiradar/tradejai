@@ -1,43 +1,41 @@
 import React from 'react';
 
 interface MetricsProps {
-  trades: any[]; // Za mu daidaita ainihin bayanan daga baya
+  trades: any[];
+  isDark?: boolean;
 }
 
-export default function MetricsGrid({ trades }: MetricsProps) {
-  // Dan jauran lissafi na jiran gaske (Za mu hada da Supabase daga baya)
+export default function MetricsGrid({ trades, isDark = true }: MetricsProps) {
+  // Katukan sun dawo gajeru kuma babu dogon bayani na kasa
   const stats = [
-    { title: 'Net P&L', value: '+$2,700.00', color: 'text-emerald-400', bg: 'bg-emerald-500/10', desc: 'Live Equity Line Included' },
-    { title: 'Win Rate', value: '66.7%', color: 'text-blue-400', bg: 'bg-blue-500/10', desc: '+2.3% from last week' },
-    { title: 'Profit Factor', value: '4.00', color: 'text-amber-400', bg: 'bg-amber-500/10', desc: 'Healthy expectancy' },
-    { title: 'Total Trades', value: '9', color: 'text-slate-300', bg: 'bg-slate-500/10', desc: 'All assets logged' },
-    { title: 'Total Win', value: '6', color: 'text-emerald-400', bg: 'bg-emerald-500/10', desc: 'Successful closures' },
-    { title: 'Total Loss', value: '3', color: 'text-rose-400', bg: 'bg-rose-500/10', desc: 'Managed risk trades' },
-    { title: 'Weekly Trades', value: '4', color: 'text-indigo-400', bg: 'bg-indigo-500/10', desc: 'This calendar week' },
-    { title: 'Monthly Trades', value: '9', color: 'text-purple-400', bg: 'bg-purple-500/10', desc: 'Current month cycle' },
-    { title: 'Yearly Trades', value: '48', color: 'text-cyan-400', bg: 'bg-cyan-500/10', desc: 'Total 2026 history' },
+    { title: 'Net P&L', value: '+$2,700.00', color: isDark ? 'text-emerald-400' : 'text-emerald-600' },
+    { title: 'Win Rate', value: '66.7%', color: isDark ? 'text-blue-400' : 'text-blue-600' },
+    { title: 'Profit Factor', value: '4.00', color: isDark ? 'text-amber-400' : 'text-amber-600' },
+    { title: 'Total Trades', value: '9', color: isDark ? 'text-slate-300' : 'text-slate-700' },
+    { title: 'Total Win', value: '6', color: isDark ? 'text-emerald-400' : 'text-emerald-600' },
+    { title: 'Total Loss', value: '3', color: isDark ? 'text-rose-400' : 'text-rose-600' },
+    { title: 'Weekly', value: '4', color: isDark ? 'text-indigo-400' : 'text-indigo-600' },
+    { title: 'Monthly', value: '9', color: isDark ? 'text-purple-400' : 'text-purple-600' },
+    { title: 'Yearly', value: '48', color: isDark ? 'text-cyan-400' : 'text-cyan-600' },
   ];
 
   return (
-    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-9 gap-4 p-1">
+    <div className="w-full grid grid-cols-3 md:grid-cols-5 lg:grid-cols-9 gap-2 p-1">
       {stats.map((item, index) => (
         <div 
           key={index} 
-          className={`p-4 rounded-xl border border-slate-800 bg-[#0f1424] hover:border-slate-700 transition-all duration-200 ${
-            item.title === 'Net P&L' ? 'col-span-2 md:col-span-1' : ''
+          className={`p-2 rounded-lg border text-center transition-all duration-200 ${
+            isDark 
+              ? 'bg-[#0f1424] border-slate-800 text-white' 
+              : 'bg-white border-slate-200 text-slate-900 shadow-sm'
           }`}
         >
-          <p className="text-xs font-medium text-slate-400 uppercase tracking-wider">{item.title}</p>
-          <p className={`text-xl md:text-2xl font-bold mt-2 ${item.color}`}>
+          <p className={`text-[10px] font-bold uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+            {item.title}
+          </p>
+          <p className={`text-sm md:text-base font-extrabold mt-0.5 ${item.color}`}>
             {item.value}
           </p>
-          
-          {/* Idan Net P&L ne, za mu bar gurbin karamin Sparkline line a nan gaba */}
-          {item.title === 'Net P&L' && (
-            <div className="w-full h-1 bg-slate-800 rounded-full mt-3 overflow-hidden">
-              <div className="w-3/4 h-full bg-emerald-500"></div>
-            </div>
-          )}
         </div>
       ))}
     </div>

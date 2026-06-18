@@ -79,7 +79,24 @@ export default function Home() {
       {/* STAGE 1 PERFORMANCE OVERVIEW */}
       <div className="w-full max-w-6xl grid grid-cols-1 lg:grid-cols-12 gap-4 mt-6 px-2">
         <MetricsGrid trades={allTrades} />
-           
+           {/* STAGE 1 PERFORMANCE OVERVIEW */}
+<div className="w-full max-w-6xl grid grid-cols-1 lg:grid-cols-12 gap-4">
+  
+  {/* Sanya shi ya canza launi da isDark, sannan ya mamaye layi gaba daya a laptop */}
+  <div className="lg:col-span-12">
+    <MetricsGrid trades={allTrades} isDark={isDark} />
+  </div>
+  
+  {/* Graph din zai dawo kasa da katukan yanzu */}
+  <div className="lg:col-span-12">
+    <EquityChart
+      equityCurveData={equityCurveData}
+      isDark={isDark}
+      mounted={mounted}
+    />
+  </div>
+  
+</div>
         <EquityChart 
           equityCurveData={equityCurveData} 
           isDark={isDark} 
