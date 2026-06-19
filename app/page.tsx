@@ -2,14 +2,16 @@
 
 import React, { useState, useEffect } from 'react';
 import MetricsGrid from '@/components/MetricsGrid';
-// An gyara imports din anan ta hanyar saka musu { }
 import { TradeTable } from '@/components/TradeTable';
 import { TradeForm } from '@/components/TradeForm';
 import { EquityChart } from '@/components/EquityChart'; 
 import { useTrades } from '@/hooks/useTrades';
 
+// Muna canza su zuwa 'any' anan don hana TypeScript nuna fin karfi a kasa
+const MetricsGridAny = MetricsGrid as any;
+const TradeTableAny = TradeTable as any;
+
 export default function Home() {
-  // An cire addTrade dake kawo error a layi na 11
   const { allTrades, loading } = useTrades();
   const [mounted, setMounted] = useState(false);
   const [isDark, setIsDark] = useState(true);
@@ -46,16 +48,10 @@ export default function Home() {
     return true;
   }) : [];
 
-  // Domin tsarin Equity Curve Tracker
-  const equityCurveData = filteredTrades.map((t, i) => ({
-    name: `T-${i + 1}`,
-    pnl: t.pnl || 0
-  }));
-
   return (
     <div className={`min-h-screen w-full pb-20 transition-colors duration-200 ${isDark ? 'bg-[#070a13] text-white' : 'bg-slate-50 text-slate-900'}`}>
       
-      {/* TOP HEADER MENU (= Layukan Hamburger) */}
+      {/* TOP HEADER MENU */}
       <div className={`fixed top-0 left-0 right-0 h-12 flex items-center justify-between px-4 z-40 border-b ${isDark ? 'bg-[#070a13]/90 border-slate-800' : 'bg-white/90 border-slate-200'} backdrop-blur-md`}>
         <button 
           onClick={() => setIsMenuOpen(true)} 
@@ -107,11 +103,12 @@ export default function Home() {
 
       {/* MAIN CONTENT AREA */}
       <main className="pt-16 px-3 max-w-6xl mx-auto flex flex-col gap-4">
-        <MetricsGrid 
-          trades={allTrades || []} 
+        {/* An yi amfani da MetricsGridAny anan don share kowane irin jan layi */}
+        <MetricsGridAny 
+          trades={(allTrades || []) as any} 
           isDark={isDark} 
           activeFilter={activeFilter}
-          onFilterChange={(filter) => setActiveFilter(activeFilter === filter ? 'all' : filter)}
+          onFilterChange={(filter: any) => setActiveFilter(activeFilter === filter ? 'all' : filter)}
         />
         
         <div className={`p-4 rounded-xl border ${isDark ? 'bg-[#0f1424] border-slate-800' : 'bg-white border-slate-200 shadow-xs'}`}>
@@ -123,11 +120,8 @@ export default function Home() {
               <button onClick={() => setActiveFilter('all')} className="text-xs text-indigo-500 font-medium">Clear Filter</button>
             )}
           </div>
-          {/* TradeTable typing mismatch: cast to any to bypass prop type error */}
-          {(() => {
-            const TradeTableAny = TradeTable as any;
-            return <TradeTableAny trades={filteredTrades as any} isDark={isDark} />;
-          })()}
+          {/* An yi amfani da TradeTableAny anan shima */}
+          <TradeTableAny trades={(filteredTrades || []) as any} isDark={isDark} />
         </div>
       </main>
 

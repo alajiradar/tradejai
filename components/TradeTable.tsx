@@ -1,16 +1,19 @@
-// components/TradeTable.tsx
 "use client";
 
 import { useState } from "react";
 
 interface TradeTableProps {
-  allTrades: any[];
-  fetchingTrades: boolean;
+  allTrades?: any[];
+  trades?: any[]; // Mun kara wannan don ya dace da abinda ke cikin page.tsx
+  fetchingTrades?: boolean;
   isDark: boolean;
 }
 
-export function TradeTable({ allTrades, fetchingTrades, isDark }: TradeTableProps) {
+export function TradeTable({ allTrades, trades, fetchingTrades = false, isDark }: TradeTableProps) {
   const [selectedTrade, setSelectedTrade] = useState<any | null>(null);
+
+  // Muna hada sunayen guda biyu; idan babu ko daya ya dauki array wofi [] don gudun crash
+  const incomingTrades = trades || allTrades || [];
 
   // Taimakon gyara lokaci zuwa yadda yake a hoto
   const formatDateTime = (dateString: string) => {
@@ -42,13 +45,13 @@ export function TradeTable({ allTrades, fetchingTrades, isDark }: TradeTableProp
 
       {fetchingTrades ? (
         <div className="text-center py-12 text-sm opacity-60">Loading history...</div>
-      ) : allTrades.length === 0 ? (
+      ) : incomingTrades.length === 0 ? ( // Mun canza zuwa safe variable anan
         <div className="text-center py-12 text-sm opacity-40 border-2 border-dashed rounded-xl border-slate-800/40">
           No trades logged yet. Your journal is empty.
         </div>
       ) : (
         <div className="space-y-3">
-          {allTrades.slice(0, 10).map((trade) => {
+          {incomingTrades.slice(0, 10).map((trade: any) => {
             const isWin = trade.status === "WIN" || (trade.status === "BE" && (trade.pnl || 0) > 0);
             const formattedDate = trade.created_at ? trade.created_at.split("T")[0] : "";
 
@@ -85,7 +88,7 @@ export function TradeTable({ allTrades, fetchingTrades, isDark }: TradeTableProp
 
                 <div className="text-right">
                   <div className={`text-sm font-bold font-mono ${isWin ? "text-emerald-500" : "text-rose-500"}`}>
-                    {trade.pnl !== null ? `${trade.pnl >= 0 ? "+" : ""}$${trade.pnl}` : "N/A"}
+                    {trade.pnl !== null && trade.pnl !== undefined ? `${trade.pnl >= 0 ? "+" : ""}$${trade.pnl}` : "N/A"}
                   </div>
                   <span className={`inline-block text-[9px] font-bold tracking-wider px-1.5 py-0.5 rounded mt-1 ${
                     trade.status === "WIN" ? "bg-emerald-500/20 text-emerald-500" : trade.status === "LOSS" ? "bg-rose-500/20 text-rose-500" : "bg-slate-500/20 text-slate-400"
@@ -99,7 +102,7 @@ export function TradeTable({ allTrades, fetchingTrades, isDark }: TradeTableProp
         </div>
       )}
 
-      {/* --- ADVANCED MODAL DIALOG (IRIN NA HOTO 506571.jpg) --- */}
+      {/* --- ADVANCED MODAL DIALOG --- */}
       {selectedTrade && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
           <div className={`rounded-2xl max-w-3xl w-full p-6 shadow-2xl border max-h-[92vh] overflow-y-auto ${
@@ -150,7 +153,7 @@ export function TradeTable({ allTrades, fetchingTrades, isDark }: TradeTableProp
               </div>
               <div className={`p-3.5 rounded-xl border ${isDark ? "bg-slate-950/40 border-slate-800/80" : "bg-slate-50 border-slate-100"}`}>
                 <span className="block text-[9px] uppercase font-bold tracking-wider opacity-40 mb-1">Trading Session</span>
-                <span className="text-base font-black text-cyan-400">{selectedTrade.trading_session}</span>
+                <span className="text-base font-black text-cyan-400">{selectedTrade.trading_session || "N/A"}</span>
               </div>
             </div>
 
