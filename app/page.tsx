@@ -2,166 +2,123 @@
 
 import React, { useState, useEffect } from 'react';
 import MetricsGrid from '@/components/MetricsGrid';
-import { TradeTable } from '@/components/TradeTable';
+import { TradeTable } from '@/components/TradeTable'; 
 import { TradeForm } from '@/components/TradeForm';
-import { EquityChart } from '@/components/EquityChart'; 
+import BottomNav from '@/components/BottomNav'; 
 import { useTrades } from '@/hooks/useTrades';
 
-// Muna canza su zuwa 'any' anan don hana TypeScript nuna fin karfi a kasa
-const MetricsGridAny = MetricsGrid as any;
-const TradeTableAny = TradeTable as any;
-
 export default function Home() {
-  const { allTrades, loading } = useTrades();
-  const [mounted, setMounted] = useState(false);
+  const { allTrades = [], loading, addTrade } = useTrades();
   const [isDark, setIsDark] = useState(true);
-  
-  const [activeFilter, setActiveFilter] = useState('all'); 
+  const [activeFilter, setActiveFilter] = useState<'all' | 'weekly' | 'monthly' | 'yearly'>('all');
   const [isFormOpen, setIsFormOpen] = useState(false);
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [formMessage, setFormMessage] = useState('');
-  const [formLoading, setFormLoading] = useState(false);
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'analytics' | 'calendar' | 'ai-coach' | 'settings'>('dashboard');
 
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  if (!mounted) return null;
-
-  // Tace trades dangane da katin da aka danna
-  const filteredTrades = allTrades ? allTrades.filter((trade) => {
-    if (activeFilter === 'all') return true;
-    
-    const tradeDate = new Date(trade.created_at || trade.date);
+  // Tace Trades dangane da lokacin da aka zaɓa (Live Filtering Engine)
+  const filteredTrades = React.useMemo(() => {
     const now = new Date();
-    
-    if (activeFilter === 'weekly') {
-      const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-      return tradeDate >= oneWeekAgo;
-    }
-    if (activeFilter === 'monthly') {
-      return tradeDate.getMonth() === now.getMonth() && tradeDate.getFullYear() === now.getFullYear();
-    }
-    if (activeFilter === 'yearly') {
-      return tradeDate.getFullYear() === now.getFullYear();
-    }
-    return true;
-  }) : [];
+    return (allTrades || []).filter((trade: any) => {
+      if (!trade.date) return activeFilter === 'all';
+      const tradeDate = new Date(trade.date);
+      
+      if (activeFilter === 'weekly') {
+        const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        return tradeDate >= oneWeekAgo;
+      }
+      if (activeFilter === 'monthly') {
+        return tradeDate.getMonth() === now.getMonth() && tradeDate.getFullYear() === now.getFullYear();
+      }
+      if (activeFilter === 'yearly') {
+        return tradeDate.getFullYear() === now.getFullYear();
+      }
+      return true;
+    });
+  }, [allTrades, activeFilter]);
 
   return (
-    <div className={`min-h-screen w-full pb-20 transition-colors duration-200 ${isDark ? 'bg-[#070a13] text-white' : 'bg-slate-50 text-slate-900'}`}>
+    <div className={`min-h-screen pb-24 transition-colors duration-300 ${isDark ? 'bg-[#0b121f] text-slate-100' : 'bg-slate-50 text-slate-900'}`}>
       
-      {/* TOP HEADER MENU */}
-      <div className={`fixed top-0 left-0 right-0 h-12 flex items-center justify-between px-4 z-40 border-b ${isDark ? 'bg-[#070a13]/90 border-slate-800' : 'bg-white/90 border-slate-200'} backdrop-blur-md`}>
-        <button 
-          onClick={() => setIsMenuOpen(true)} 
-          className="text-xl font-bold p-1 hover:opacity-80"
-        >
-          ☰
-        </button>
-        <div className="w-6 h-6 rounded-full bg-indigo-600 flex items-center justify-center text-xs text-white font-bold">
-          T
-        </div>
-      </div>
-
-      {/* SIDE DRAWER MENU */}
-      {isMenuOpen && (
-        <div className="fixed inset-0 z-50 flex">
-          <div className="fixed inset-0 bg-black/50 backdrop-blur-xs" onClick={() => setIsMenuOpen(false)} />
-          <div className={`relative w-64 h-full p-5 flex flex-col justify-between border-r shadow-2xl ${isDark ? 'bg-[#0f1424] border-slate-800' : 'bg-white border-slate-200'}`}>
-            <div>
-              <div className="flex justify-between items-center mb-6">
-                <h2 className="text-xl font-black tracking-wider text-indigo-500">Tradejai</h2>
-                <button onClick={() => setIsMenuOpen(false)} className="text-lg">✕</button>
-              </div>
-              
-              <nav className="space-y-3">
-                <button className="flex items-center gap-3 w-full p-2 rounded-md hover:bg-indigo-600/10 text-sm font-semibold">📊 Dashboard</button>
-                <button className="flex items-center gap-3 w-full p-2 rounded-md hover:bg-indigo-600/10 text-sm font-semibold">📈 Analytics</button>
-                <button className="flex items-center gap-3 w-full p-2 rounded-md hover:bg-indigo-600/10 text-sm font-semibold">📅 Calendar</button>
-                <button className="flex items-center gap-3 w-full p-2 rounded-md hover:bg-indigo-600/10 text-sm font-semibold">🤖 AI Coach</button>
-                <button className="flex items-center gap-3 w-full p-2 rounded-md hover:bg-indigo-600/10 text-sm font-semibold">⚙️ Settings</button>
-              </nav>
-            </div>
-
-            <div className="space-y-4 border-t pt-4 border-slate-700/50">
-              <div className="flex items-center justify-between p-1 rounded-md bg-slate-500/10">
-                <button onClick={() => setIsDark(false)} className={`flex-1 text-xs py-1 rounded ${!isDark ? 'bg-indigo-600 text-white' : ''}`}>Light</button>
-                <button onClick={() => setIsDark(true)} className={`flex-1 text-xs py-1 rounded ${isDark ? 'bg-indigo-600 text-white' : ''}`}>Dark</button>
-              </div>
-              <div className="flex items-center gap-2 p-2 rounded-md bg-indigo-600/10">
-                <div className="w-8 h-8 rounded-full bg-indigo-600 flex items-center justify-center text-white font-bold text-xs">U</div>
-                <div>
-                  <p className="text-xs font-bold">User Account</p>
-                  <p className="text-[10px] opacity-60">Registration/Profile</p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* MAIN CONTENT AREA */}
-      <main className="pt-16 px-3 max-w-6xl mx-auto flex flex-col gap-4">
-        {/* An yi amfani da MetricsGridAny anan don share kowane irin jan layi */}
-        <MetricsGridAny 
-          trades={(allTrades || []) as any} 
-          isDark={isDark} 
-          activeFilter={activeFilter}
-          onFilterChange={(filter: any) => setActiveFilter(activeFilter === filter ? 'all' : filter)}
-        />
-        
-        <div className={`p-4 rounded-xl border ${isDark ? 'bg-[#0f1424] border-slate-800' : 'bg-white border-slate-200 shadow-xs'}`}>
-          <div className="flex justify-between items-center mb-3">
-            <h3 className="text-sm font-bold tracking-tight">
-              Recent Trades {activeFilter !== 'all' && `(${activeFilter})`}
-            </h3>
-            {activeFilter !== 'all' && (
-              <button onClick={() => setActiveFilter('all')} className="text-xs text-indigo-500 font-medium">Clear Filter</button>
+      {/* 1. SABON HEADER NAVBAR (UI/UX SIMPLIFIED) */}
+      <header className={`sticky top-0 z-40 px-4 py-4 backdrop-blur-md border-b flex justify-between items-center ${isDark ? 'bg-[#0b121f]/80 border-slate-800' : 'bg-white/80 border-slate-200'}`}>
+        <h1 className="text-xl font-bold tracking-tight bg-gradient-to-r from-blue-500 to-indigo-400 bg-clip-text text-transparent">Tradejai</h1>
+        <div className="flex items-center gap-4">
+          {/* Theme Toggle Button */}
+          <button onClick={() => setIsDark(!isDark)} className={`p-2 rounded-lg border transition-all ${isDark ? 'border-slate-800 hover:bg-slate-800 text-amber-400' : 'border-slate-200 hover:bg-slate-100 text-slate-700'}`}>
+            {isDark ? (
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364-6.364l-.707.707M6.343 17.657l-.707.707M16.243 17.657l.707.707M7.757 6.343l.707.707M12 7a5 5 0 100 10 5 5 0 000-10z" /></svg>
+            ) : (
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" /></svg>
             )}
-          </div>
-          {/* An yi amfani da TradeTableAny anan shima */}
-          <TradeTableAny trades={(filteredTrades || []) as any} isDark={isDark} />
+          </button>
+          {/* Notification Bell */}
+          <button className={`p-2 rounded-lg border ${isDark ? 'border-slate-800 text-slate-400' : 'border-slate-200 text-slate-600'}`}>
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" /></svg>
+          </button>
         </div>
+      </header>
+
+      {/* DYNAMIC VIEW MANAGER */}
+      <main className="max-w-7xl mx-auto px-4 pt-6">
+        {activeTab === 'dashboard' ? (
+          <div className="space-y-6">
+            {/* 2. METRICS GRID & LIVE TIMEFRAME FILTERS */}
+            <MetricsGrid 
+              trades={allTrades} 
+              filteredTrades={filteredTrades}
+              activeFilter={activeFilter} 
+              setActiveFilter={setActiveFilter} 
+              isDark={isDark} 
+            />
+
+            {/* RECENT TRADES CONTAINER */}
+            <div className={`p-5 rounded-2xl border ${isDark ? 'bg-[#121926] border-slate-800' : 'bg-white border-slate-200'}`}>
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-base font-bold tracking-tight">Recent Trades</h3>
+                {activeFilter !== 'all' && (
+                  <button onClick={() => setActiveFilter('all')} className="text-xs font-semibold text-blue-500 hover:underline">Clear Filter</button>
+                )}
+              </div>
+              <TradeTable trades={filteredTrades} isDark={isDark} />
+            </div>
+          </div>
+        ) : (
+          /* 5. EMPTY STATES FOR OTHER UNBUILT TABS */
+          <div className="flex flex-col items-center justify-center py-20 text-center">
+            <div className={`p-4 rounded-full mb-4 ${isDark ? 'bg-slate-800 text-slate-400' : 'bg-slate-100 text-slate-500'}`}>
+              <svg className="w-10 h-10" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" /></svg>
+            </div>
+            <h3 className="text-lg font-bold">Sashen {activeTab.toUpperCase()}</h3>
+            <p className={`text-sm max-w-xs mt-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Muna kammala Dashboard za mu dawo mu gina wannan shafin daki-daki.</p>
+          </div>
+        )}
       </main>
 
-      {/* FLOATING TRADE FORM MODAL */}
+      {/* 4. REPOSITIONED FLOATING ACTION BUTTON FOR ADD TRADE */}
+      {activeTab === 'dashboard' && (
+        <button 
+          onClick={() => setIsFormOpen(true)}
+          className="fixed bottom-24 right-5 z-50 p-4 rounded-full bg-blue-600 text-white shadow-xl hover:bg-blue-700 active:scale-95 transition-all flex items-center justify-center border border-blue-500/50"
+          aria-label="Add Trade"
+        >
+          <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" /></svg>
+        </button>
+      )}
+
+      {/* 🟢 MODAL DIALOG FOR ENTERING NEW TRADES (GYARARREN TSARI MAI FITOWA A TSAKIYA) */}
       {isFormOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
-          <div className={`w-full max-w-lg p-5 rounded-xl shadow-2xl border relative max-h-[90vh] overflow-y-auto ${isDark ? 'bg-[#0f1424] border-slate-800' : 'bg-white border-slate-200'}`}>
-            <button onClick={() => setIsFormOpen(false)} className="absolute top-4 right-4 text-sm font-bold opacity-70 hover:opacity-100">✕</button>
-            <h3 className="text-base font-bold mb-4 text-indigo-500">Log New Trade</h3>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 overflow-y-auto">
+          <div className="w-full max-w-2xl relative max-h-[90vh] overflow-y-auto rounded-2xl shadow-2xl">
             <TradeForm 
-              isDark={isDark}
-              loading={formLoading}
-              setLoading={setFormLoading}
-              message={formMessage}
-              setMessage={setFormMessage}
-              uploadImage={async () => ''}
-              onSuccess={() => { setIsFormOpen(false); window.location.reload(); }}
+              onClose={() => setIsFormOpen(false)} 
+              onAdd={addTrade} 
+              isDark={isDark} 
             />
           </div>
         </div>
       )}
 
-      {/* COMPACT BOTTOM NAVIGATION BAR */}
-      <div className={`fixed bottom-0 left-0 right-0 h-14 border-t flex items-center justify-around px-2 z-40 ${isDark ? 'bg-[#070a13]/95 border-slate-800' : 'bg-white/95 border-slate-200 shadow-lg'} backdrop-blur-sm`}>
-        <button onClick={() => setActiveFilter('all')} className="flex flex-col items-center justify-center text-indigo-500"><span className="text-lg">📊</span><span className="text-[9px] font-medium">Dashboard</span></button>
-        <button className="flex flex-col items-center justify-center opacity-60 hover:opacity-100"><span className="text-lg">📈</span><span className="text-[9px] font-medium">Analytics</span></button>
-        
-        <button 
-          onClick={() => setIsFormOpen(true)}
-          className="w-10 h-10 bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white rounded-full flex items-center justify-center text-xl font-bold shadow-lg transform -translate-y-2 border-4"
-          style={{ borderColor: isDark ? '#070a13' : '#f8fafc' }}
-        >
-          +
-        </button>
-
-        <button className="flex flex-col items-center justify-center opacity-60 hover:opacity-100"><span className="text-lg">📅</span><span className="text-[9px] font-medium">Calendar</span></button>
-        <button className="flex flex-col items-center justify-center opacity-60 hover:opacity-100"><span className="text-lg">🤖</span><span className="text-[9px] font-medium">AI Coach</span></button>
-        <button onClick={() => setIsMenuOpen(true)} className="flex flex-col items-center justify-center opacity-60 hover:opacity-100"><span className="text-lg">⚙️</span><span className="text-[9px] font-medium">Settings</span></button>
-      </div>
-
+      {/* 5. PROFESSIONAL BOTTOM NAVIGATION BAR */}
+      <BottomNav activeTab={activeTab} setActiveTab={setActiveTab} isDark={isDark} />
     </div>
   );
 }

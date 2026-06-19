@@ -1,4 +1,3 @@
-// hooks/useTrades.ts
 "use client";
 
 import { useState, useEffect } from "react";
@@ -26,6 +25,43 @@ export function useTrades() {
   useEffect(() => {
     fetchTradesData();
   }, []);
+
+  // --- SABON TSARI: FUNCTION ƊIN DA ZAI AJIYE TRADES A SUPABASE ---
+  const addTrade = async (newTrade: any) => {
+    setLoading(true);
+    setMessage("");
+
+    try {
+      const { data, error } = await supabase
+        .from("trades")
+        .insert([
+          {
+            asset: newTrade.asset,
+            category: newTrade.category,
+            type: newTrade.type,
+            pnl: newTrade.pnl,
+            status: newTrade.status,
+            date: newTrade.date,
+          },
+        ])
+        .select();
+
+      if (error) {
+        throw error;
+      }
+
+      if (data && data.length > 0) {
+        // Sabunta allTrades state nan take ba tare da an sake yin refresh ba
+        setAllTrades((prevTrades) => [data[0], ...prevTrades]);
+        setMessage("An yi nasarar ajiye trade dinka!");
+      }
+    } catch (error: any) {
+      console.error("Error adding trade:", error);
+      setMessage(`An sami matsala wajen ajiye trade: ${error.message}`);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const uploadImage = async (file: File, prefix: string) => {
     const fileExt = file.name.split(".").pop();
@@ -74,6 +110,7 @@ export function useTrades() {
     })
   ];
 
+  // ANAN AN SAKAR MA `page.tsx` DAMAR GANIN `addTrade` GABA ƊAYA
   return {
     allTrades,
     fetchingTrades,
@@ -87,6 +124,7 @@ export function useTrades() {
     profitFactor,
     equityCurveData,
     fetchTradesData,
-    uploadImage
+    uploadImage,
+    addTrade // <-- Ga shi nan mun dawo da shi!
   };
 }

@@ -1,50 +1,133 @@
+'use client';
+
 import React from 'react';
 
-interface MetricsProps {
+interface MetricsGridProps {
   trades: any[];
-  isDark?: boolean;
-  activeFilter: string;
-  onFilterChange: (filter: string) => void;
+  filteredTrades: any[];
+  activeFilter: 'all' | 'weekly' | 'monthly' | 'yearly';
+  setActiveFilter: (filter: 'all' | 'weekly' | 'monthly' | 'yearly') => void;
+  isDark: boolean;
 }
 
-export default function MetricsGrid({ trades, isDark = true, activeFilter, onFilterChange }: MetricsProps) {
-  const stats = [
-    { id: 'all', title: 'Net P&L', value: '+$2,700.00', color: isDark ? 'text-emerald-400' : 'text-emerald-600', clickable: false },
-    { id: 'all', title: 'Win Rate', value: '66.7%', color: isDark ? 'text-blue-400' : 'text-blue-600', clickable: false },
-    { id: 'all', title: 'Profit Factor', value: '4.00', color: isDark ? 'text-amber-400' : 'text-amber-600', clickable: false },
-    { id: 'all', title: 'Total Trades', value: '9', color: isDark ? 'text-slate-300' : 'text-slate-700', clickable: false },
-    { id: 'all', title: 'Total Win', value: '6', color: isDark ? 'text-emerald-400' : 'text-emerald-600', clickable: false },
-    { id: 'all', title: 'Total Loss', value: '3', color: isDark ? 'text-rose-400' : 'text-rose-600', clickable: false },
-    { id: 'weekly', title: 'Weekly', value: '4', color: isDark ? 'text-indigo-400' : 'text-indigo-600', clickable: true },
-    { id: 'monthly', title: 'Monthly', value: '9', color: isDark ? 'text-purple-400' : 'text-purple-600', clickable: true },
-    { id: 'yearly', title: 'Yearly', value: '48', color: isDark ? 'text-cyan-400' : 'text-cyan-600', clickable: true },
-  ];
+export default function MetricsGrid({ trades = [], filteredTrades = [], activeFilter, setActiveFilter, isDark }: MetricsGridProps) {
+  
+  // Lissafin Metrics Kai Tsaye (Live Database Calculations)
+  const stats = React.useMemo(() => {
+    const tradeSource = filteredTrades || [];
+    const totalTrades = tradeSource.length;
+    
+    let netPnL = 0;
+    let totalWins = 0;
+    let totalLosses = 0;
+    let grossProfit = 0;
+    let grossLoss = 0;
+
+    tradeSource.forEach((trade) => {
+      const pnlValue = Number(trade.pnl) || 0;
+      netPnL += pnlValue;
+
+      if (pnlValue > 0 || trade.status === 'WIN') {
+        totalWins++;
+        grossProfit += pnlValue;
+      } else if (pnlValue < 0 || trade.status === 'LOSS') {
+        totalLosses++;
+        grossLoss += Math.abs(pnlValue);
+      }
+    });
+
+    const winRate = totalTrades > 0 ? (totalWins / totalTrades) * 100 : 0;
+    const profitFactor = grossLoss > 0 ? (grossProfit / grossLoss) : grossProfit > 0 ? grossProfit : 0;
+
+    // Lissafin kididdigar rukunoni na gaibu don adana lambobi a maɓallan tace bayanai
+    const countByFilter = (filterType: string) => {
+      const now = new Date();
+      return (trades || []).filter((t: any) => {
+        if (!t.date) return false;
+        const d = new Date(t.date);
+        if (filterType === 'weekly') return d >= new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        if (filterType === 'monthly') return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+        if (filterType === 'yearly') return d.getFullYear() === now.getFullYear();
+        return true;
+      }).length;
+    };
+
+    return {
+      netPnL,
+      winRate: winRate.toFixed(1),
+      profitFactor: profitFactor.toFixed(2),
+      totalTrades,
+      totalWins,
+      totalLosses,
+      weeklyCount: countByFilter('weekly'),
+      monthlyCount: countByFilter('monthly'),
+      yearlyCount: countByFilter('yearly'),
+    };
+  }, [trades, filteredTrades]);
+
+  const cardStyle = `p-4 rounded-xl border transition-all ${isDark ? 'bg-[#121926] border-slate-800/80' : 'bg-white border-slate-200'}`;
 
   return (
-    <div className="w-full grid grid-cols-3 md:grid-cols-5 lg:grid-cols-9 gap-1.5 p-1">
-      {stats.map((item, index) => {
-        const isActive = activeFilter === item.id;
-        return (
-          <div 
-            key={index} 
-            onClick={() => item.clickable && onFilterChange(item.id)}
-            className={`p-1.5 rounded-md border text-center transition-all duration-200 ${
-              item.clickable ? 'cursor-pointer hover:scale-105 active:scale-95' : ''
-            } ${
-              isActive 
-                ? (isDark ? 'bg-indigo-950 border-indigo-500 shadow-md ring-1 ring-indigo-500' : 'bg-indigo-50 border-indigo-400 shadow-sm ring-1 ring-indigo-400')
-                : (isDark ? 'bg-[#0f1424] border-slate-800 text-white' : 'bg-white border-slate-200 text-slate-900 shadow-sm')
-            }`}
-          >
-            <p className={`text-[9px] font-bold uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-              {item.title} {item.clickable && isActive && '•'}
-            </p>
-            <p className={`text-xs md:text-sm font-black mt-0.5 ${item.color}`}>
-              {item.value}
-            </p>
-          </div>
-        );
-      })}
+    <div className="space-y-4">
+      {/* TRADING CORE METRICS GRID (NO PURPLE BORDERS) */}
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+        <div className={cardStyle}>
+          <p className="text-xs font-medium text-slate-400">NET P&L</p>
+          <p className={`text-lg font-bold mt-1 ${stats.netPnL >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
+            {stats.netPnL >= 0 ? `+$${stats.netPnL.toLocaleString()}` : `-$${Math.abs(stats.netPnL).toLocaleString()}`}
+          </p>
+        </div>
+
+        <div className={cardStyle}>
+          <p className="text-xs font-medium text-slate-400">WIN RATE</p>
+          <p className="text-lg font-bold text-blue-500 mt-1">{stats.winRate}%</p>
+        </div>
+
+        <div className={cardStyle}>
+          <p className="text-xs font-medium text-slate-400">PROFIT FACTOR</p>
+          <p className="text-lg font-bold text-amber-500 mt-1">{stats.profitFactor}</p>
+        </div>
+
+        <div className={cardStyle}>
+          <p className="text-xs font-medium text-slate-400">TOTAL TRADES</p>
+          <p className="text-lg font-bold mt-1">{stats.totalTrades}</p>
+        </div>
+
+        <div className={cardStyle}>
+          <p className="text-xs font-medium text-slate-400">TOTAL WIN</p>
+          <p className="text-lg font-bold text-emerald-500 mt-1">{stats.totalWins}</p>
+        </div>
+
+        <div className={cardStyle}>
+          <p className="text-xs font-medium text-slate-400">TOTAL LOSS</p>
+          <p className="text-lg font-bold text-rose-500 mt-1">{stats.totalLosses}</p>
+        </div>
+      </div>
+
+      {/* TIMEFRAME FILTER CARDS (LIVE CLICKABLE BUTTONS) */}
+      <div className="grid grid-cols-3 gap-3">
+        {[
+          { id: 'weekly', label: 'WEEKLY', count: stats.weeklyCount },
+          { id: 'monthly', label: 'MONTHLY', count: stats.monthlyCount },
+          { id: 'yearly', label: 'YEARLY', count: stats.yearlyCount },
+        ].map((item) => {
+          const isActive = activeFilter === item.id;
+          return (
+            <button
+              key={item.id}
+              onClick={() => setActiveFilter(isActive ? 'all' : (item.id as any))}
+              className={`p-3 rounded-xl border text-center transition-all active:scale-98 flex flex-col items-center justify-center ${
+                isActive 
+                  ? 'bg-blue-600/10 border-blue-500 text-blue-500 font-semibold' 
+                  : isDark ? 'bg-[#121926] border-slate-800/80 hover:bg-slate-800/50 text-slate-300' : 'bg-white border-slate-200 hover:bg-slate-50 text-slate-700'
+              }`}
+            >
+              <span className="text-[10px] tracking-wider text-slate-400 block">{item.label}</span>
+              <span className="text-base font-bold mt-0.5">{item.count}</span>
+            </button>
+          );
+        })}
+      </div>
     </div>
   );
 }
