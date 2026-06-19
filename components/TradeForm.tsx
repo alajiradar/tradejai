@@ -209,10 +209,6 @@ export function TradeForm({ isDark, loading, setLoading, message, setMessage, up
 
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className={`block text-xs font-semibold uppercase tracking-wider mb-1.5 ${isDark ? "text-slate-400" : "text-slate-500"}`}>Net PnL ($)</label>
-            <input type="number" step="any" value={pnl} onChange={(e) => setPnl(e.target.value)} placeholder="e.g. 250 or -100" className={`w-full border rounded-xl p-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition ${isDark ? "bg-slate-950 border-slate-800 text-slate-100 focus:border-blue-500" : "bg-slate-50 border-slate-200 text-slate-900 focus:border-blue-600"}`} />
-          </div>
-          <div>
             <label className={`block text-xs font-semibold uppercase tracking-wider mb-1.5 ${isDark ? "text-slate-400" : "text-slate-500"}`}>Commissions / Fee ($)</label>
             <input type="number" step="any" value={fee} onChange={(e) => setFee(e.target.value)} placeholder="e.g. 5.50" className={`w-full border rounded-xl p-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition ${isDark ? "bg-slate-950 border-slate-800 text-slate-100 focus:border-blue-500" : "bg-slate-50 border-slate-200 text-slate-900 focus:border-blue-600"}`} />
           </div>
