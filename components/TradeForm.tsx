@@ -7,6 +7,8 @@ interface TradeFormProps {
   isDark: boolean;
   onClose: () => void;
   onAdd?: any;
+  onUpdate?: (id: string, updatedTrade: any) => Promise<void>;
+  editingTrade?: any;
   loading?: boolean;
   setLoading?: (l: boolean) => void;
   message?: string;
@@ -24,7 +26,9 @@ export function TradeForm({
   uploadImage: propUploadImage, 
   onSuccess, 
   onClose, 
-  onAdd 
+  onAdd,
+  onUpdate,
+  editingTrade
 }: TradeFormProps) {
   
   const [localLoading, setLocalLoading] = useState(false);
@@ -35,7 +39,6 @@ export function TradeForm({
   const message = propMessage !== undefined ? propMessage : localMessage;
   const setMessage = propSetMessage || setLocalMessage;
 
-  // 🟢 GYARAN BUCKET: An sauya daga "trade-charts" zuwa "trade-images" domin ya dace da na Supabase dinka
   const defaultUploadImage = async (file: File, prefix: string): Promise<string> => {
     const fileExt = file.name.split(".").pop();
     const fileName = `${prefix}_${Date.now()}_${Math.random().toString(36).substring(2, 7)}.${fileExt}`;
@@ -46,6 +49,7 @@ export function TradeForm({
   };
   const uploadImage = propUploadImage || defaultUploadImage;
 
+  // Form Field States
   const [marketCategory, setMarketCategory] = useState("Forex");
   const [asset, setAsset] = useState("");
   const [tradeType, setTradeType] = useState("BUY");
@@ -66,7 +70,48 @@ export function TradeForm({
   const [imageBeforeFile, setImageBeforeFile] = useState<File | null>(null);
   const [imageAfterFile, setImageAfterFile] = useState<File | null>(null);
 
-  // --- 🟢 AUTOMATIC PNL ENGINE WITH INDICES MULTIPLIER FIX ---
+  // Effect to populate form fields dynamically when in Edit Mode
+  useEffect(() => {
+    if (editingTrade) {
+      setMarketCategory(editingTrade.market_category || "Forex");
+      setAsset(editingTrade.asset || "");
+      setTradeType(editingTrade.trade_type || "BUY");
+      setEntryPrice(editingTrade.entry_price?.toString() || "");
+      setExitPrice(editingTrade.exit_price?.toString() || "");
+      setPnl(editingTrade.pnl?.toString() || "");
+      setStatus(editingTrade.status || "WIN");
+      setStrategy(editingTrade.strategy || "");
+      setNotes(editingTrade.notes || "");
+      setPositionSize(editingTrade.position_size?.toString() || "");
+      setStopLoss(editingTrade.stop_loss?.toString() || "");
+      setTakeProfit(editingTrade.take_profit?.toString() || "");
+      setPsychologyTags(editingTrade.psychology_tags || "");
+      setTradingSession(editingTrade.trading_session || "London");
+      setFee(editingTrade.fee?.toString() || "");
+      setEntryTime(editingTrade.entry_time || "");
+      setExitTime(editingTrade.exit_time || "");
+    } else {
+      setMarketCategory("Forex");
+      setAsset("");
+      setTradeType("BUY");
+      setEntryPrice("");
+      setExitPrice("");
+      setPnl("");
+      setStatus("WIN");
+      setStrategy("");
+      setNotes("");
+      setPositionSize("");
+      setStopLoss("");
+      setTakeProfit("");
+      setPsychologyTags("");
+      setTradingSession("London");
+      setFee("");
+      setEntryTime("");
+      setExitTime("");
+    }
+  }, [editingTrade]);
+
+  // --- ADVANCED AUTOMATIC PNL ENGINE WITH MT5 LOT SIZE MULTIPLIER ---
   useEffect(() => {
     const entry = parseFloat(entryPrice);
     const exit = parseFloat(exitPrice);
@@ -74,28 +119,40 @@ export function TradeForm({
 
     if (!isNaN(entry) && !isNaN(exit) && !isNaN(size)) {
       let calculatedPnl = 0;
+      
+      // Standard contract calculation base
       if (tradeType === "BUY") {
         calculatedPnl = (exit - entry) * size;
       } else {
         calculatedPnl = (entry - exit) * size;
       }
 
-      // Idan an zabi Indices, muna ninka lissafin da 10 don lot size ya daidaita da MetaTrader dinka
-      const multiplier = marketCategory === "Indices" ? 10 : 1;
+      // Apply dynamic multiplier based on MT5 asset specifications
+      let multiplier = 1;
+      if (marketCategory === "Forex") {
+        multiplier = 100000; // Converts MT5 lot sizes (e.g. 0.5) to standard contract units
+      } else if (marketCategory === "Indices") {
+        multiplier = 10;
+      }
+
       calculatedPnl = calculatedPnl * multiplier;
 
-      const finalPnl = parseFloat(calculatedPnl.toFixed(2));
-      setPnl(finalPnl.toString());
+      // Subtract fees if provided
+      const finalFee = parseFloat(fee) || 0;
+      calculatedPnl = calculatedPnl - finalFee;
 
-      if (finalPnl > 0) {
+      const finalPnlValue = parseFloat(calculatedPnl.toFixed(2));
+      setPnl(finalPnlValue.toString());
+
+      if (finalPnlValue > 0) {
         setStatus("WIN");
-      } else if (finalPnl < 0) {
+      } else if (finalPnlValue < 0) {
         setStatus("LOSS");
       } else {
         setStatus("BE");
       }
     }
-  }, [entryPrice, exitPrice, positionSize, tradeType, marketCategory]);
+  }, [entryPrice, exitPrice, positionSize, tradeType, marketCategory, fee]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -103,8 +160,8 @@ export function TradeForm({
     setMessage("");
 
     try {
-      let imageBeforeUrl = null;
-      let imageAfterUrl = null;
+      let imageBeforeUrl = editingTrade ? editingTrade.image_before : null;
+      let imageAfterUrl = editingTrade ? editingTrade.image_after : null;
 
       if (imageBeforeFile) {
         setMessage("Uploading 'Before' chart...");
@@ -118,7 +175,6 @@ export function TradeForm({
 
       setMessage("Saving all trade logs to database...");
 
-      // Shirya bayanan da za a tura cikin Database
       const tradeData = {
         market_category: marketCategory,
         asset: asset.toUpperCase(),
@@ -141,28 +197,39 @@ export function TradeForm({
         image_after: imageAfterUrl,
       };
 
-      const { error } = await supabase.from("trades").insert([tradeData]);
+      if (editingTrade) {
+        const { error } = await supabase
+          .from("trades")
+          .update(tradeData)
+          .eq("id", editingTrade.id);
 
-      if (error) throw error;
-
-      setMessage("✓ Success! Trade successfully logged.");
-      
-      if (onSuccess) onSuccess();
-      
-      // 🟢 GYARAN CRASH: An sanya duka bayanan trade din (tare da flat keys) a cikin onAdd() domin useTrades hook din ya karanta .asset ba tare da crash ba
-      if (onAdd) { 
-        try { 
-          onAdd({
-            ...tradeData,
-            asset: asset.toUpperCase(),
-            marketCategory,
-            tradeType,
-            entryPrice,
-            exitPrice,
-            positionSize,
-          }); 
-        } catch(err){} 
+        if (error) throw error;
+        setMessage("✓ Success! Trade successfully updated.");
+        
+        if (onUpdate) {
+          await onUpdate(editingTrade.id, tradeData);
+        }
+      } else {
+        const { error } = await supabase.from("trades").insert([tradeData]);
+        if (error) throw error;
+        setMessage("✓ Success! Trade successfully logged.");
+        
+        if (onAdd) {
+          try {
+            onAdd({
+              ...tradeData,
+              asset: asset.toUpperCase(),
+              marketCategory,
+              tradeType,
+              entryPrice,
+              exitPrice,
+              positionSize,
+            });
+          } catch (err) {}
+        }
       }
+
+      if (onSuccess) onSuccess();
 
       setTimeout(() => {
         onClose();
@@ -179,12 +246,16 @@ export function TradeForm({
   return (
     <div className={`border rounded-2xl p-6 shadow-xl transition-all duration-300 ${isDark ? "bg-slate-900 border-slate-800" : "bg-white border-slate-100"}`}>
       <div className="flex justify-between items-center mb-1">
-        <h2 className={`text-lg font-bold ${isDark ? "text-blue-400" : "text-blue-600"}`}>Log New Trade</h2>
+        <h2 className={`text-lg font-bold ${isDark ? "text-blue-400" : "text-blue-600"}`}>
+          {editingTrade ? "Edit Trade Details" : "Log New Trade"}
+        </h2>
         <button type="button" onClick={onClose} className="text-xs px-2.5 py-1 bg-gray-500/10 hover:bg-gray-500/20 text-gray-400 rounded-lg transition">
           Close
         </button>
       </div>
-      <p className={`text-xs mb-5 ${isDark ? "text-slate-400" : "text-slate-500"}`}>Record your advanced trade execution metrics carefully</p>
+      <p className={`text-xs mb-5 ${isDark ? "text-slate-400" : "text-slate-500"}`}>
+        {editingTrade ? "Modify your historical execution metrics" : "Record your advanced trade execution metrics carefully"}
+      </p>
 
       {message && (
         <div className={`p-3 rounded-xl text-sm text-center mb-5 font-medium border ${
@@ -244,8 +315,8 @@ export function TradeForm({
 
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className={`block text-xs font-semibold uppercase tracking-wider mb-1.5 ${isDark ? "text-slate-400" : "text-slate-500"}`}>Position Size</label>
-            <input type="number" step="any" value={positionSize} onChange={(e) => setPositionSize(e.target.value)} placeholder="Lots/Units" className={`w-full border rounded-xl p-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition ${isDark ? "bg-slate-950 border-slate-800 text-slate-100 focus:border-blue-500" : "bg-slate-50 border-slate-200 text-slate-900 focus:border-blue-600"}`} />
+            <label className={`block text-xs font-semibold uppercase tracking-wider mb-1.5 ${isDark ? "text-slate-400" : "text-slate-500"}`}>Position Size (Lots)</label>
+            <input type="number" step="any" value={positionSize} onChange={(e) => setPositionSize(e.target.value)} placeholder="e.g. 0.5 or 1.0" className={`w-full border rounded-xl p-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition ${isDark ? "bg-slate-950 border-slate-800 text-slate-100 focus:border-blue-500" : "bg-slate-50 border-slate-200 text-slate-900 focus:border-blue-600"}`} />
           </div>
           <div>
             <label className={`block text-xs font-semibold uppercase tracking-wider mb-1.5 ${isDark ? "text-slate-400" : "text-slate-500"}`}>Strategy System</label>
@@ -282,7 +353,7 @@ export function TradeForm({
           </div>
           <div>
             <label className={`block text-xs font-semibold uppercase tracking-wider mb-1.5 ${isDark ? "text-slate-400" : "text-slate-500"}`}>Commissions / Fee ($)</label>
-            <input type="number" step="any" value={fee} onChange={(e) => setFee(e.target.value)} placeholder="e.g. 5.50" className={`w-full border rounded-xl p-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition ${isDark ? "bg-slate-950 border-slate-800 text-slate-100 focus:border-blue-500" : "bg-slate-50 border-slate-200 text-slate-900 focus:border-blue-600"}`} />
+            <input type="number" step="any" value={fee} onChange={(e) => setFee(e.target.value)} placeholder="e.g. 3.50" className={`w-full border rounded-xl p-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition ${isDark ? "bg-slate-950 border-slate-800 text-slate-100 focus:border-blue-500" : "bg-slate-50 border-slate-200 text-slate-900 focus:border-blue-600"}`} />
           </div>
         </div>
 
@@ -319,7 +390,7 @@ export function TradeForm({
         </div>
 
         <button type="submit" disabled={loading} className="w-full bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white font-semibold rounded-xl p-3 text-sm transition shadow-lg shadow-blue-500/20 disabled:opacity-50">
-          {loading ? "Processing..." : "Save Trade Entry"}
+          {loading ? "Processing..." : editingTrade ? "Update Trade Details" : "Save Trade Entry"}
         </button>
       </form>
     </div>

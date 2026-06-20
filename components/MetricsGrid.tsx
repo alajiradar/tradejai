@@ -12,6 +12,46 @@ interface MetricsGridProps {
 
 export default function MetricsGrid({ trades = [], filteredTrades = [], activeFilter, setActiveFilter, isDark }: MetricsGridProps) {
   
+  // Ingantaccen mai fassara kwanan wata don kowane irin tsari (dd/mm/yyyy ko yyyy/mm/dd ko ISO)
+  const parseTradeDate = (dateVal: any): Date | null => {
+    if (!dateVal) return null;
+    if (dateVal instanceof Date) return isNaN(dateVal.getTime()) ? null : dateVal;
+    
+    const str = String(dateVal).trim();
+    
+    // Idan kwanan watan yana ɗauke da alamar "/"
+    if (str.includes('/')) {
+      const parts = str.split(' ');
+      const dateParts = parts[0].split('/');
+      if (dateParts.length === 3) {
+        let day, month, year;
+        
+        // Idan ya fara da shekara (yyyy/mm/dd)
+        if (dateParts[0].length === 4) {
+          year = parseInt(dateParts[0], 10);
+          month = parseInt(dateParts[1], 10) - 1;
+          day = parseInt(dateParts[2], 10);
+        } else {
+          // Idan ya fara da rana (dd/mm/yyyy)
+          day = parseInt(dateParts[0], 10);
+          month = parseInt(dateParts[1], 10) - 1;
+          year = parseInt(dateParts[2], 10);
+        }
+        
+        if (parts[1]) {
+          const timeParts = parts[1].split(':');
+          const hour = parseInt(timeParts[0], 10) || 0;
+          const minute = parseInt(timeParts[1], 10) || 0;
+          return new Date(year, month, day, hour, minute);
+        }
+        return new Date(year, month, day);
+      }
+    }
+    
+    const d = new Date(str);
+    return isNaN(d.getTime()) ? null : d;
+  };
+
   // Lissafin Metrics Kai Tsaye (Live Database Calculations)
   const stats = React.useMemo(() => {
     const tradeSource = filteredTrades || [];
@@ -39,15 +79,35 @@ export default function MetricsGrid({ trades = [], filteredTrades = [], activeFi
     const winRate = totalTrades > 0 ? (totalWins / totalTrades) * 100 : 0;
     const profitFactor = grossLoss > 0 ? (grossProfit / grossLoss) : grossProfit > 0 ? grossProfit : 0;
 
-    // Lissafin kididdigar rukunoni na gaibu don adana lambobi a maɓallan tace bayanai
+    // Lissafin ƙididdigar kowane rukuni na lokaci guda ɗaya da zai yi daidai da babban shafi
     const countByFilter = (filterType: string) => {
       const now = new Date();
+      
+      // 1. Farkon makon nan (Daga Lahadi)
+      const startOfWeek = new Date(now);
+      startOfWeek.setDate(now.getDate() - now.getDay());
+      startOfWeek.setHours(0, 0, 0, 0);
+      
+      // 2. Farkon watan nan (Ranar 1 ga wata)
+      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
+      
+      // 3. Shekarar da ta gabata (Last Year)
+      const lastYear = now.getFullYear() - 1;
+
       return (trades || []).filter((t: any) => {
-        if (!t.date) return false;
-        const d = new Date(t.date);
-        if (filterType === 'weekly') return d >= new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-        if (filterType === 'monthly') return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
-        if (filterType === 'yearly') return d.getFullYear() === now.getFullYear();
+        const dateRaw = t.entry_date || t.date || t.entryDate || t.created_at || t.createdAt;
+        const d = parseTradeDate(dateRaw);
+        if (!d) return false;
+
+        if (filterType === 'weekly') {
+          return d >= startOfWeek && d <= now;
+        }
+        if (filterType === 'monthly') {
+          return d >= startOfMonth && d <= now;
+        }
+        if (filterType === 'yearly') {
+          return d.getFullYear() === lastYear;
+        }
         return true;
       }).length;
     };
@@ -109,7 +169,7 @@ export default function MetricsGrid({ trades = [], filteredTrades = [], activeFi
         {[
           { id: 'weekly', label: 'WEEKLY', count: stats.weeklyCount },
           { id: 'monthly', label: 'MONTHLY', count: stats.monthlyCount },
-          { id: 'yearly', label: 'YEARLY', count: stats.yearlyCount },
+          { id: 'yearly', label: 'LAST YEAR', count: stats.yearlyCount },
         ].map((item) => {
           const isActive = activeFilter === item.id;
           return (
