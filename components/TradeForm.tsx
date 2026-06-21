@@ -17,6 +17,16 @@ interface TradeFormProps {
   onSuccess?: () => void;
 }
 
+// Global predefined international psychology tags matching our analytics profile
+const PSYCHOLOGY_OPTIONS = [
+  { id: "Disciplined", label: "Disciplined" },
+  { id: "Calm", label: "Calm" },
+  { id: "Fear / Hesitation", label: "Fear / Hesitation" },
+  { id: "FOMO", label: "FOMO" },
+  { id: "Revenge Trading", label: "Revenge Trading" },
+  { id: "Over-trading", label: "Over-trading" },
+];
+
 export function TradeForm({ 
   isDark, 
   loading: propLoading, 
@@ -62,13 +72,15 @@ export function TradeForm({
   const [positionSize, setPositionSize] = useState("");
   const [stopLoss, setStopLoss] = useState("");
   const [takeProfit, setTakeProfit] = useState("");
-  const [psychologyTags, setPsychologyTags] = useState("");
   const [tradingSession, setTradingSession] = useState("London");
   const [fee, setFee] = useState("");
   const [entryTime, setEntryTime] = useState("");
   const [exitTime, setExitTime] = useState("");
   const [imageBeforeFile, setImageBeforeFile] = useState<File | null>(null);
   const [imageAfterFile, setImageAfterFile] = useState<File | null>(null);
+  
+  // Mandatory Multi-Select State for Psychology Tags
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
 
   // Effect to populate form fields dynamically when in Edit Mode
   useEffect(() => {
@@ -85,11 +97,19 @@ export function TradeForm({
       setPositionSize(editingTrade.position_size?.toString() || "");
       setStopLoss(editingTrade.stop_loss?.toString() || "");
       setTakeProfit(editingTrade.take_profit?.toString() || "");
-      setPsychologyTags(editingTrade.psychology_tags || "");
       setTradingSession(editingTrade.trading_session || "London");
       setFee(editingTrade.fee?.toString() || "");
       setEntryTime(editingTrade.entry_time || "");
       setExitTime(editingTrade.exit_time || "");
+      
+      // Load and parse psychology tags string back into selected array
+      if (editingTrade.psychology_tags) {
+        setSelectedTags(
+          editingTrade.psychology_tags.split(",").map((t: string) => t.trim())
+        );
+      } else {
+        setSelectedTags([]);
+      }
     } else {
       setMarketCategory("Forex");
       setAsset("");
@@ -103,13 +123,27 @@ export function TradeForm({
       setPositionSize("");
       setStopLoss("");
       setTakeProfit("");
-      setPsychologyTags("");
       setTradingSession("London");
       setFee("");
       setEntryTime("");
       setExitTime("");
+      setSelectedTags([]);
     }
   }, [editingTrade]);
+
+  // Handle Tag Selection Toggles (Enforce Max 3 constraint)
+  const handleTagToggle = (tagId: string) => {
+    if (selectedTags.includes(tagId)) {
+      setSelectedTags(selectedTags.filter((id) => id !== tagId));
+    } else {
+      if (selectedTags.length < 3) {
+        setSelectedTags([...selectedTags, tagId]);
+      } else {
+        setMessage("System Notice: Maximum limit is 3 psychology tags per trade execution.");
+        setTimeout(() => setMessage(""), 3000);
+      }
+    }
+  };
 
   // --- ADVANCED AUTOMATIC PNL ENGINE WITH MT5 LOT SIZE MULTIPLIER ---
   useEffect(() => {
@@ -159,6 +193,13 @@ export function TradeForm({
     setLoading(true);
     setMessage("");
 
+    // Enforce mandatory selection rule (1 to 3 tags) before writing to Supabase
+    if (selectedTags.length === 0) {
+      setMessage("Validation Error: Selecting at least 1 Psychology Tag is mandatory.");
+      setLoading(false);
+      return;
+    }
+
     try {
       let imageBeforeUrl = editingTrade ? editingTrade.image_before : null;
       let imageAfterUrl = editingTrade ? editingTrade.image_after : null;
@@ -175,6 +216,9 @@ export function TradeForm({
 
       setMessage("Saving all trade logs to database...");
 
+      // Convert selection array to clean comma-separated string for DB layout
+      const finalTagsString = selectedTags.join(", ");
+
       const tradeData = {
         market_category: marketCategory,
         asset: asset.toUpperCase(),
@@ -188,7 +232,7 @@ export function TradeForm({
         position_size: positionSize ? parseFloat(positionSize) : null,
         stop_loss: stopLoss ? parseFloat(stopLoss) : null,
         take_profit: takeProfit ? parseFloat(takeProfit) : null,
-        psychology_tags: psychologyTags || null,
+        psychology_tags: finalTagsString || null,
         trading_session: tradingSession,
         fee: fee ? parseFloat(fee) : 0,
         entry_time: entryTime || null,
@@ -379,9 +423,40 @@ export function TradeForm({
           </div>
         </div>
 
+        {/* --- DYNAMIC MANDATORY PSYCHOLOGY MULTI-SELECT BUTTON GRID --- */}
         <div>
-          <label className={`block text-xs font-semibold uppercase tracking-wider mb-1.5 ${isDark ? "text-slate-400" : "text-slate-500"}`}>Psychology Tag</label>
-          <input type="text" value={psychologyTags} onChange={(e) => setPsychologyTags(e.target.value)} placeholder="e.g. FOMO, Calm" className={`w-full border rounded-xl p-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition ${isDark ? "bg-slate-950 border-slate-800 text-slate-100 focus:border-blue-500" : "bg-slate-50 border-slate-200 text-slate-900 focus:border-blue-600"}`} />
+          <label className={`block text-xs font-bold uppercase tracking-wider mb-2 ${isDark ? "text-slate-400" : "text-slate-500"}`}>
+            Psychology Tags <span className="text-rose-500">* (Select 1 to 3)</span>
+          </label>
+          <div className="grid grid-cols-2 gap-2">
+            {PSYCHOLOGY_OPTIONS.map((tag) => {
+              const isSelected = selectedTags.includes(tag.id);
+              return (
+                <button
+                  key={tag.id}
+                  type="button"
+                  onClick={() => handleTagToggle(tag.id)}
+                  className={`p-2.5 text-xs rounded-xl border text-left font-medium transition-all flex items-center justify-between ${
+                    isSelected
+                      ? "bg-blue-600/10 border-blue-500 text-blue-400 shadow-sm"
+                      : isDark 
+                        ? "bg-slate-950 border-slate-800 text-slate-400 hover:border-slate-700 hover:text-slate-200" 
+                        : "bg-slate-50 border-slate-200 text-slate-600 hover:border-slate-300 hover:text-slate-900"
+                  }`}
+                >
+                  <span>{tag.label}</span>
+                  {isSelected && (
+                    <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
+                  )}
+                </button>
+              );
+            })}
+          </div>
+          <div className="flex justify-between items-center mt-1.5 px-0.5">
+            <p className={`text-[10px] ${selectedTags.length === 0 ? "text-rose-400 font-medium" : "text-slate-500"}`}>
+              {selectedTags.length === 0 ? "⚠️ Selection required to save trade log" : `Selected Profile metrics: ${selectedTags.length} / 3`}
+            </p>
+          </div>
         </div>
 
         <div>
@@ -389,8 +464,12 @@ export function TradeForm({
           <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} placeholder="Reasoning..." className={`w-full border rounded-xl p-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition resize-none ${isDark ? "bg-slate-950 border-slate-800 text-slate-100 focus:border-blue-500" : "bg-slate-50 border-slate-200 text-slate-900 focus:border-blue-600"}`}></textarea>
         </div>
 
-        <button type="submit" disabled={loading} className="w-full bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white font-semibold rounded-xl p-3 text-sm transition shadow-lg shadow-blue-500/20 disabled:opacity-50">
-          {loading ? "Processing..." : editingTrade ? "Update Trade Details" : "Save Trade Entry"}
+        <button 
+          type="submit" 
+          disabled={loading || selectedTags.length === 0} 
+          className="w-full bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white font-semibold rounded-xl p-3 text-sm transition shadow-lg shadow-blue-500/20 disabled:opacity-40 disabled:cursor-not-allowed"
+        >
+          {loading ? "Processing Metric Logs..." : editingTrade ? "Update Trade Details" : "Save Trade Entry"}
         </button>
       </form>
     </div>
