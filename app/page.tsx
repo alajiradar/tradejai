@@ -194,7 +194,7 @@ export default function Home() {
       )}
 
       {/* BOTTOM NAVIGATION BAR */}
-      <BottomNav activeTab={activeTab} setActiveTab={setActiveTab} isDark={isDark} />
+      <BottomNav isDark={isDark} />
     </div>
   );
 }
