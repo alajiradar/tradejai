@@ -2,91 +2,71 @@
 
 import React, { useState } from 'react';
 import BottomNav from '@/components/BottomNav';
+import EquityChart from '@/components/EquityChart'; // Shigo da EquityChart dinmu
+import { useTrades } from '@/hooks/useTrades';
+import { calculateAnalytics } from '@/analytics/analyticsCalculations';
+import { MarketCategory, TradingSession, Trade } from '@/types/trade';
 
 export default function Analytics() {
   const [isDark, setIsDark] = useState(true);
   const [timeframe, setTimeframe] = useState<'weekly' | 'monthly' | 'yearly'>('monthly');
+  
+  const { allTrades: trades = [], loading = false } = useTrades() || {};
 
-  // --- MOCK DATA STRUCTURES MAPPED TO YOUR 10 MVP REQUIREMENTS ---
-
-  // 1 & 3. Performance Overview & Streak Analytics
-  const overviewStats = {
-    totalTrades: 140,
-    totalWins: 85,
-    totalLosses: 45,
-    totalBreakEven: 10,
-    winRate: '60.7%',
-    lossRate: '32.1%',
-    breakEvenRate: '7.2%',
-    netPnl: '+$6,820.00',
-    grossProfit: '+$11,200.00',
-    grossLoss: '-$4,380.00',
-    profitFactor: '2.55',
-    avgWin: '+$131.76',
-    avgLoss: '-$97.33',
-    riskRewardAvg: '1:1.8',
-    expectancy: '+$42.30',
-    largestWin: '+$1,450.00',
-    largestLoss: '-$380.00',
-    currentWinStreak: 4,
-    currentLossStreak: 0,
-    longestWinStreak: 9,
-    longestLossStreak: 3
+  const formatCurrency = (val: number) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+    }).format(val);
   };
 
-  // 4. Market Analytics
-  const marketAnalytics = [
-    { market: 'Forex', trades: 50, winRate: '70%', pnl: '+$2,500.00', isProfit: true },
-    { market: 'Crypto', trades: 30, winRate: '40%', pnl: '-$400.00', isProfit: false },
-    { market: 'Indices', trades: 60, winRate: '75%', pnl: '+$4,720.00', isProfit: true },
-  ];
+  if (loading) {
+    return (
+      <div className={`min-h-screen flex items-center justify-center transition-colors duration-300 ${isDark ? 'bg-[#0b121f]' : 'bg-slate-50'}`}>
+        <div className="flex flex-col items-center gap-2">
+          <div className="w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
+          <p className="text-xs font-medium tracking-wider uppercase opacity-60">Loading Analytics...</p>
+        </div>
+      </div>
+    );
+  }
 
-  // 5. Asset Analytics
-  const assetAnalytics = [
-    { asset: 'EURUSD', trades: 40, winRate: '72%', pnl: '+$1,500.00', isProfit: true },
-    { asset: 'XAUUSD', trades: 20, winRate: '45%', pnl: '-$700.00', isProfit: false },
-    { asset: 'NAS100', trades: 60, winRate: '80%', pnl: '+$4,000.00', isProfit: true },
-    { asset: 'BTCUSD', trades: 20, winRate: '35%', pnl: '-$200.00', isProfit: false },
-  ];
+  const analytics = calculateAnalytics(trades);
+  const closedTrades = trades.filter((t: Trade) => t.pnl !== null && t.status !== null);
+  
+  const totalWins = closedTrades.filter((t: Trade) => t.status === 'WIN').length;
+  const totalLosses = closedTrades.filter((t: Trade) => t.status === 'LOSS').length;
+  const totalBE = closedTrades.filter((t: Trade) => t.status === 'BE').length;
+  const lossRate = closedTrades.length === 0 ? 0 : (totalLosses / closedTrades.length) * 100;
 
-  // 6. Strategy Analytics
-  const strategyAnalytics = [
-    { strategy: 'ICT Silver Bullet', trades: 40, winRate: '78%', pnl: '+$3,500.00', isProfit: true },
-    { strategy: 'SMC Orderflow', trades: 25, winRate: '52%', pnl: '+$200.00', isProfit: true },
-    { strategy: 'High/Low Breakout', trades: 15, winRate: '40%', pnl: '-$500.00', isProfit: false },
-  ];
+  const assetMap: Record<string, { pnl: number; wins: number; total: number }> = {};
+  const strategyMap: Record<string, { pnl: number; wins: number; total: number }> = {};
+  const directionMap = { BUY: { pnl: 0, wins: 0, total: 0 }, SELL: { pnl: 0, wins: 0, total: 0 } };
 
-  // 7. Session Analytics
-  const sessionAnalytics = [
-    { session: 'London Session', winRate: '72%', pnl: '+$2,000.00', isProfit: true },
-    { session: 'New York Session', winRate: '65%', pnl: '+$1,500.00', isProfit: true },
-    { session: 'Asian Session', winRate: '35%', pnl: '-$700.00', isProfit: false },
-  ];
-
-  // 8. Trade Direction Analytics
-  const directionAnalytics = [
-    { direction: 'Buy (Longs)', winRate: '70%', pnl: '+$2,500.00', isProfit: true },
-    { direction: 'Sell (Shorts)', winRate: '45%', pnl: '-$800.00', isProfit: false },
-  ];
-
-  // 9. Time Analytics (Day of Week)
-  const dayOfWeekAnalytics = [
-    { day: 'Monday', winRate: '80%', progress: 80 },
-    { day: 'Tuesday', winRate: '75%', progress: 75 },
-    { day: 'Wednesday', winRate: '40%', progress: 40 },
-    { day: 'Thursday', winRate: '70%', progress: 70 },
-    { day: 'Friday', winRate: '35%', progress: 35 },
-  ];
-
-  // 10. Psychology Analytics
-  const psychologyAnalytics = [
-    { emotion: 'Disciplined', trades: 62, winRate: '75%', color: 'text-emerald-500' },
-    { emotion: 'Calm', trades: 38, winRate: '70%', color: 'text-teal-500' },
-    { emotion: 'Fear / Hesitation', trades: 18, winRate: '30%', color: 'text-amber-500' },
-    { emotion: 'FOMO', trades: 12, winRate: '20%', color: 'text-rose-400' },
-    { emotion: 'Revenge Trading', trades: 7, winRate: '10%', color: 'text-rose-600' },
-    { emotion: 'Over-trading', trades: 3, winRate: '10%', color: 'text-red-500' },
-  ];
+  closedTrades.forEach((t: Trade) => {
+    const pnl = t.pnl || 0;
+    const isWin = t.status === 'WIN';
+    
+    if (t.asset) {
+      if (!assetMap[t.asset]) assetMap[t.asset] = { pnl: 0, wins: 0, total: 0 };
+      assetMap[t.asset].pnl += pnl;
+      assetMap[t.asset].total++;
+      if (isWin) assetMap[t.asset].wins++;
+    }
+    if (t.strategy) {
+      if (!strategyMap[t.strategy]) strategyMap[t.strategy] = { pnl: 0, wins: 0, total: 0 };
+      strategyMap[t.strategy].pnl += pnl;
+      strategyMap[t.strategy].total++;
+      if (isWin) strategyMap[t.strategy].wins++;
+    }
+    
+    if (t.trade_type === 'BUY' || t.trade_type === 'SELL') {
+      const dir = t.trade_type as 'BUY' | 'SELL';
+      directionMap[dir].pnl += pnl;
+      directionMap[dir].total++;
+      if (isWin) directionMap[dir].wins++;
+    }
+  });
 
   return (
     <div className={`min-h-screen pb-32 transition-colors duration-300 ${isDark ? 'bg-[#0b121f]' : 'bg-slate-50'} ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>
@@ -131,128 +111,119 @@ export default function Analytics() {
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
             <div className={`p-4 rounded-xl border ${isDark ? 'bg-[#121926]/40 border-slate-900' : 'bg-white border-slate-100'}`}>
               <span className="text-[10px] text-slate-500 font-medium block">Total Trades</span>
-              <span className="text-xl font-bold tracking-tight">{overviewStats.totalTrades}</span>
+              <span className="text-xl font-bold tracking-tight">{analytics.riskAndActivity.totalTrades}</span>
             </div>
             <div className={`p-4 rounded-xl border ${isDark ? 'bg-[#121926]/40 border-slate-900' : 'bg-white border-slate-100'}`}>
               <span className="text-[10px] text-emerald-500 font-medium block">Total Wins</span>
-              <span className="text-xl font-bold tracking-tight text-emerald-500">{overviewStats.totalWins}</span>
+              <span className="text-xl font-bold tracking-tight text-emerald-500">{totalWins}</span>
             </div>
             <div className={`p-4 rounded-xl border ${isDark ? 'bg-[#121926]/40 border-slate-900' : 'bg-white border-slate-100'}`}>
               <span className="text-[10px] text-rose-500 font-medium block">Total Losses</span>
-              <span className="text-xl font-bold tracking-tight text-rose-500">{overviewStats.totalLosses}</span>
+              <span className="text-xl font-bold tracking-tight text-rose-500">{totalLosses}</span>
             </div>
             <div className={`p-4 rounded-xl border ${isDark ? 'bg-[#121926]/40 border-slate-900' : 'bg-white border-slate-100'}`}>
               <span className="text-[10px] text-slate-400 font-medium block">Break Even</span>
-              <span className="text-xl font-bold tracking-tight text-slate-400">{overviewStats.totalBreakEven}</span>
+              <span className="text-xl font-bold tracking-tight text-slate-400">{totalBE}</span>
             </div>
             <div className={`p-4 rounded-xl border ${isDark ? 'bg-[#121926]/40 border-slate-900' : 'bg-white border-slate-100'}`}>
               <span className="text-[10px] text-blue-500 font-medium block">Win Rate</span>
-              <span className="text-xl font-bold tracking-tight text-blue-500">{overviewStats.winRate}</span>
+              <span className="text-xl font-bold tracking-tight text-blue-500">{analytics.performance.winRate.toFixed(1)}%</span>
             </div>
             <div className={`p-4 rounded-xl border ${isDark ? 'bg-[#121926]/40 border-slate-900' : 'bg-white border-slate-100'}`}>
               <span className="text-[10px] text-slate-500 font-medium block">Net P&L</span>
-              <span className="text-xl font-bold tracking-tight text-emerald-500">{overviewStats.netPnl}</span>
+              <span className={`text-xl font-bold tracking-tight ${analytics.performance.netPnl >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
+                {analytics.performance.netPnl >= 0 ? '+' : ''}{formatCurrency(analytics.performance.netPnl)}
+              </span>
             </div>
           </div>
 
-          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
             <div className={`p-3.5 rounded-xl border ${isDark ? 'bg-[#121926]/20 border-slate-900/60' : 'bg-white border-slate-100'}`}>
               <span className="text-[10px] text-slate-500 block">Gross Profit</span>
-              <span className="text-sm font-semibold text-emerald-500">{overviewStats.grossProfit}</span>
+              <span className="text-sm font-semibold text-emerald-500">+{formatCurrency(analytics.performance.grossProfit)}</span>
             </div>
             <div className={`p-3.5 rounded-xl border ${isDark ? 'bg-[#121926]/20 border-slate-900/60' : 'bg-white border-slate-100'}`}>
               <span className="text-[10px] text-slate-500 block">Gross Loss</span>
-              <span className="text-sm font-semibold text-rose-500">{overviewStats.grossLoss}</span>
+              <span className="text-sm font-semibold text-rose-500">-{formatCurrency(analytics.performance.grossLoss)}</span>
             </div>
             <div className={`p-3.5 rounded-xl border ${isDark ? 'bg-[#121926]/20 border-slate-900/60' : 'bg-white border-slate-100'}`}>
               <span className="text-[10px] text-slate-500 block">Profit Factor</span>
-              <span className="text-sm font-semibold text-blue-500">{overviewStats.profitFactor}</span>
+              <span className="text-sm font-semibold text-blue-500">{analytics.performance.profitFactor.toFixed(2)}</span>
             </div>
             <div className={`p-3.5 rounded-xl border ${isDark ? 'bg-[#121926]/20 border-slate-900/60' : 'bg-white border-slate-100'}`}>
               <span className="text-[10px] text-slate-500 block">Avg Win / Avg Loss</span>
-              <span className="text-sm font-semibold">{overviewStats.avgWin} / {overviewStats.avgLoss}</span>
+              <span className="text-sm font-semibold text-xs truncate">
+                <span className="text-emerald-500">+{formatCurrency(analytics.performance.averageWin)}</span> / <span className="text-rose-500">-{formatCurrency(analytics.performance.averageLoss)}</span>
+              </span>
             </div>
             <div className={`p-3.5 rounded-xl border ${isDark ? 'bg-[#121926]/20 border-slate-900/60' : 'bg-white border-slate-100'}`}>
               <span className="text-[10px] text-slate-500 block">Risk Reward Avg</span>
-              <span className="text-sm font-semibold text-indigo-400">{overviewStats.riskRewardAvg}</span>
+              <span className="text-sm font-semibold text-indigo-400">1:{analytics.riskAndActivity.averageRiskReward.toFixed(1)}</span>
             </div>
           </div>
 
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             <div className={`p-3.5 rounded-xl border ${isDark ? 'bg-[#121926]/20 border-slate-900/60' : 'bg-white border-slate-100'}`}>
-              <span className="text-[10px] text-slate-500 block">Expectancy</span>
-              <span className="text-sm font-semibold text-emerald-400">{overviewStats.expectancy}</span>
+              <span className="text-[10px] text-slate-500 block">Activity (Weekly / Monthly)</span>
+              <span className="text-sm font-semibold text-emerald-400">{analytics.riskAndActivity.weeklyTrades.toFixed(1)} / {analytics.riskAndActivity.monthlyTrades.toFixed(1)}</span>
             </div>
             <div className={`p-3.5 rounded-xl border ${isDark ? 'bg-[#121926]/20 border-slate-900/60' : 'bg-white border-slate-100'}`}>
               <span className="text-[10px] text-slate-500 block">Largest Win</span>
-              <span className="text-sm font-semibold text-emerald-500">{overviewStats.largestWin}</span>
+              <span className="text-sm font-semibold text-emerald-500">+{formatCurrency(analytics.riskAndActivity.bestTrade)}</span>
             </div>
             <div className={`p-3.5 rounded-xl border ${isDark ? 'bg-[#121926]/20 border-slate-900/60' : 'bg-white border-slate-100'}`}>
               <span className="text-[10px] text-slate-500 block">Largest Loss</span>
-              <span className="text-sm font-semibold text-rose-500">{overviewStats.largestLoss}</span>
+              <span className="text-sm font-semibold text-rose-500">-{formatCurrency(Math.abs(analytics.riskAndActivity.worstTrade))}</span>
             </div>
             <div className={`p-3.5 rounded-xl border ${isDark ? 'bg-[#121926]/20 border-slate-900/60' : 'bg-white border-slate-100'}`}>
               <span className="text-[10px] text-slate-500 block">Loss / BE Rate</span>
-              <span className="text-sm font-semibold text-slate-400">{overviewStats.lossRate} / {overviewStats.breakEvenRate}</span>
+              <span className="text-sm font-semibold text-slate-400">{lossRate.toFixed(1)}% / {analytics.performance.breakEvenRate.toFixed(1)}%</span>
             </div>
           </div>
         </section>
 
-        {/* 2 & 3. EQUITY CURVE & STREAK ANALYTICS */}
+        {/* 2 & 3. EQUITY CURVE WITH THE DEDICATED COMPONENT */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Chart Display */}
           <section className={`lg:col-span-2 p-5 rounded-xl border flex flex-col justify-between h-72 ${isDark ? 'bg-[#121926]/40 border-slate-900' : 'bg-white border-slate-100'}`}>
-            <div className="flex justify-between items-center">
+            <div className="flex justify-between items-center mb-2">
               <div>
                 <h2 className="text-xs font-bold uppercase tracking-wider text-slate-400">2. Equity Curve & Growth Chart</h2>
-                <p className="text-[10px] text-slate-500">Cumulative performance growth metric representation</p>
+                <p className="text-[10px] text-slate-500">Real-time dynamic account metric representation</p>
               </div>
-              <span className="text-xs text-emerald-500 font-bold">+$6,820.00 Net Growth</span>
+              <span className={`text-xs font-bold ${analytics.performance.netPnl >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
+                {analytics.performance.netPnl >= 0 ? '+' : ''}{formatCurrency(analytics.performance.netPnl)} Net Growth
+              </span>
             </div>
-            <div className="w-full h-36 flex items-end pt-4">
-              <svg className="w-full h-full overflow-visible" viewBox="0 0 100 30" preserveAspectRatio="none">
-                <path d="M0,25 Q15,26 30,19 T60,14 T85,6 T100,2" fill="none" stroke="#2563eb" strokeWidth="2" strokeLinecap="round" />
-                <path d="M0,25 Q15,26 30,19 T60,14 T85,6 T100,2 L100,30 L0,30 Z" fill="url(#equity-gradient)" opacity="0.05" />
-                <defs>
-                  <linearGradient id="equity-gradient" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#2563eb" />
-                    <stop offset="100%" stopColor="#2563eb" stopOpacity="0" />
-                  </linearGradient>
-                </defs>
-              </svg>
+            
+            {/* AN NAN MAZAN JE: Muna tura closedTrades cikin file din EquityChart */}
+            <div className="w-full flex-1 min-h-[160px] relative">
+              <EquityChart trades={closedTrades} />
             </div>
-            <div className={`flex justify-between text-[9px] uppercase font-bold tracking-widest ${isDark ? 'text-slate-600' : 'text-slate-400'}`}>
-              <span>Sample Period Start</span><span>Drawdown Safe Level</span><span>Current Matrix Point</span>
+
+            <div className={`flex justify-between text-[9px] uppercase font-bold tracking-widest mt-2 ${isDark ? 'text-slate-600' : 'text-slate-400'}`}>
+              <span>Start</span><span>Safe Horizon</span><span>Current Balance</span>
             </div>
           </section>
 
-          {/* Streaks Matrix */}
           <section className={`p-5 rounded-xl border flex flex-col justify-between ${isDark ? 'bg-[#121926]/40 border-slate-900' : 'bg-white border-slate-100'}`}>
-            <h2 className="text-xs font-bold uppercase tracking-wider text-slate-400">3. Streak Analytics</h2>
+            <h2 className="text-xs font-bold uppercase tracking-wider text-slate-400">3. Consistency Indicators</h2>
             <div className="divide-y divide-slate-800/40 my-auto">
               <div className="py-2.5 flex justify-between items-center">
-                <span className="text-xs text-slate-500">Current Winning Streak</span>
-                <span className="text-sm font-bold text-emerald-500">{overviewStats.currentWinStreak} Trades</span>
+                <span className="text-xs text-slate-500">Profit Factor Health</span>
+                <span className={`text-sm font-bold ${analytics.performance.profitFactor >= 1.5 ? 'text-emerald-500' : 'text-amber-500'}`}>
+                  {analytics.performance.profitFactor >= 1.5 ? 'Strong' : 'Awaiting Data'}
+                </span>
               </div>
               <div className="py-2.5 flex justify-between items-center">
-                <span className="text-xs text-slate-500">Current Losing Streak</span>
-                <span className="text-sm font-bold text-rose-500">{overviewStats.currentLossStreak} Trades</span>
-              </div>
-              <div className="py-2.5 flex justify-between items-center">
-                <span className="text-xs text-slate-500">Longest Winning Streak</span>
-                <span className="text-sm font-bold text-emerald-400">{overviewStats.longestWinStreak} Trades</span>
-              </div>
-              <div className="py-2.5 flex justify-between items-center">
-                <span className="text-xs text-slate-500">Longest Losing Streak</span>
-                <span className="text-sm font-bold text-rose-400">{overviewStats.longestLossStreak} Trades</span>
+                <span className="text-xs text-slate-500">Sample Size Status</span>
+                <span className="text-sm font-bold text-blue-500">{analytics.riskAndActivity.totalTrades} Trades Logged</span>
               </div>
             </div>
           </section>
         </div>
 
-        {/* TABLES LOWER CONTAINER (MARKET, ASSET, STRATEGY, SESSION, DIRECTION) */}
+        {/* TABLES LOWER CONTAINER */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          
           {/* 4. MARKET ANALYTICS */}
           <section className={`p-4 rounded-xl border ${isDark ? 'bg-[#121926]/40 border-slate-900' : 'bg-white border-slate-100'}`}>
             <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3">4. Market Analytics</h3>
@@ -266,14 +237,20 @@ export default function Analytics() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-800/10">
-                {marketAnalytics.map((item, i) => (
-                  <tr key={i} className="hover:bg-slate-500/5">
-                    <td className="py-2.5 font-bold">{item.market}</td>
-                    <td className="py-2.5">{item.trades}</td>
-                    <td className="py-2.5 text-blue-500 font-semibold">{item.winRate}</td>
-                    <td className={`py-2.5 text-right font-bold ${item.isProfit ? 'text-emerald-500' : 'text-rose-500'}`}>{item.pnl}</td>
-                  </tr>
-                ))}
+                {analytics.markets.length === 0 ? (
+                  <tr><td colSpan={4} className="py-4 text-center text-slate-500 text-xs">No market data logged yet</td></tr>
+                ) : (
+                  analytics.markets.map((item, i) => (
+                    <tr key={i} className="hover:bg-slate-500/5">
+                      <td className="py-2.5 font-bold">{item.market}</td>
+                      <td className="py-2.5">{item.totalTrades}</td>
+                      <td className="py-2.5 text-blue-500 font-semibold">{item.winRate.toFixed(1)}%</td>
+                      <td className={`py-2.5 text-right font-bold ${item.netPnl >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
+                        {item.netPnl >= 0 ? '+' : ''}{formatCurrency(item.netPnl)}
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </section>
@@ -291,14 +268,24 @@ export default function Analytics() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-800/10">
-                {assetAnalytics.map((item, i) => (
-                  <tr key={i} className="hover:bg-slate-500/5">
-                    <td className="py-2.5 font-bold text-blue-400">{item.asset}</td>
-                    <td className="py-2.5">{item.trades}</td>
-                    <td className="py-2.5 text-blue-500 font-semibold">{item.winRate}</td>
-                    <td className={`py-2.5 text-right font-bold ${item.isProfit ? 'text-emerald-500' : 'text-rose-500'}`}>{item.pnl}</td>
-                  </tr>
-                ))}
+                {Object.keys(assetMap).length === 0 ? (
+                  <tr><td colSpan={4} className="py-4 text-center text-slate-500 text-xs">No assets logged yet</td></tr>
+                ) : (
+                  Object.keys(assetMap).slice(0, 5).map((asset, i) => {
+                    const item = assetMap[asset];
+                    const assetWinRate = (item.wins / item.total) * 100;
+                    return (
+                      <tr key={i} className="hover:bg-slate-500/5">
+                        <td className="py-2.5 font-bold text-blue-400">{asset}</td>
+                        <td className="py-2.5">{item.total}</td>
+                        <td className="py-2.5 text-blue-500 font-semibold">{assetWinRate.toFixed(1)}%</td>
+                        <td className={`py-2.5 text-right font-bold ${item.pnl >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
+                          {item.pnl >= 0 ? '+' : ''}{formatCurrency(item.pnl)}
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
               </tbody>
             </table>
           </section>
@@ -309,21 +296,31 @@ export default function Analytics() {
             <table className="w-full text-left text-xs">
               <thead>
                 <tr className="border-b border-slate-800/40 text-slate-500 pb-2">
-                  <th className="pb-2">Trading Setup/Strategy</th>
+                  <th className="pb-2">Setup/Strategy</th>
                   <th className="pb-2">Trades</th>
                   <th className="pb-2">Win Rate</th>
                   <th className="pb-2 text-right">Net P&L</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-800/10">
-                {strategyAnalytics.map((item, i) => (
-                  <tr key={i} className="hover:bg-slate-500/5">
-                    <td className="py-2.5 font-semibold">{item.strategy}</td>
-                    <td className="py-2.5">{item.trades}</td>
-                    <td className="py-2.5 text-blue-500 font-semibold">{item.winRate}</td>
-                    <td className={`py-2.5 text-right font-bold ${item.isProfit ? 'text-emerald-500' : 'text-rose-500'}`}>{item.pnl}</td>
-                  </tr>
-                ))}
+                {Object.keys(strategyMap).length === 0 ? (
+                  <tr><td colSpan={4} className="py-4 text-center text-slate-500 text-xs">No strategies logged yet</td></tr>
+                ) : (
+                  Object.keys(strategyMap).slice(0, 5).map((strat, i) => {
+                    const item = strategyMap[strat];
+                    const stratWinRate = (item.wins / item.total) * 100;
+                    return (
+                      <tr key={i} className="hover:bg-slate-500/5">
+                        <td className="py-2.5 font-semibold">{strat}</td>
+                        <td className="py-2.5">{item.total}</td>
+                        <td className="py-2.5 text-blue-500 font-semibold">{stratWinRate.toFixed(1)}%</td>
+                        <td className={`py-2.5 text-right font-bold ${item.pnl >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
+                          {item.pnl >= 0 ? '+' : ''}{formatCurrency(item.pnl)}
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
               </tbody>
             </table>
           </section>
@@ -335,93 +332,102 @@ export default function Analytics() {
               <thead>
                 <tr className="border-b border-slate-800/40 text-slate-500 pb-2">
                   <th className="pb-2">Trading Session</th>
+                  <th className="pb-2">Trades</th>
                   <th className="pb-2">Win Rate</th>
                   <th className="pb-2 text-right">Net P&L</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-800/10">
-                {sessionAnalytics.map((item, i) => (
-                  <tr key={i} className="hover:bg-slate-500/5">
-                    <td className="py-2.5 font-medium">{item.session}</td>
-                    <td className="py-2.5 text-blue-500 font-semibold">{item.winRate}</td>
-                    <td className={`py-2.5 text-right font-bold ${item.isProfit ? 'text-emerald-500' : 'text-rose-500'}`}>{item.pnl}</td>
-                  </tr>
-                ))}
+                {analytics.sessions.length === 0 ? (
+                  <tr><td colSpan={4} className="py-4 text-center text-slate-500 text-xs">No session data logged yet</td></tr>
+                ) : (
+                  analytics.sessions.map((item, i) => (
+                    <tr key={i} className="hover:bg-slate-500/5">
+                      <td className="py-2.5 font-medium">{item.session} Session</td>
+                      <td className="py-2.5">{item.totalTrades}</td>
+                      <td className="py-2.5 text-blue-500 font-semibold">{item.winRate.toFixed(1)}%</td>
+                      <td className={`py-2.5 text-right font-bold ${item.netPnl >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
+                        {item.netPnl >= 0 ? '+' : ''}{formatCurrency(item.netPnl)}
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </section>
         </div>
 
-        {/* 8 & 9. DIRECTION & TIME MATRIX */}
+        {/* 8 & 9. DIRECTION ANALYTICS */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          
-          {/* 8. Trade Direction */}
           <section className={`p-4 rounded-xl border flex flex-col justify-between ${isDark ? 'bg-[#121926]/40 border-slate-900' : 'bg-white border-slate-100'}`}>
             <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">8. Trade Direction Analytics</h3>
             <div className="space-y-3 my-auto">
-              {directionAnalytics.map((item, i) => (
-                <div key={i} className={`p-3 rounded-lg border ${isDark ? 'bg-[#0b121f]/60 border-slate-900' : 'bg-slate-50 border-slate-200'}`}>
-                  <div className="flex justify-between items-center text-xs font-bold">
-                    <span>{item.direction}</span>
-                    <span className={item.isProfit ? 'text-emerald-500' : 'text-rose-500'}>{item.pnl}</span>
+              {(['BUY', 'SELL'] as const).map((dir) => {
+                const item = directionMap[dir];
+                const dirWinRate = item.total === 0 ? 0 : (item.wins / item.total) * 100;
+                return (
+                  <div key={dir} className={`p-3 rounded-lg border ${isDark ? 'bg-[#0b121f]/60 border-slate-900' : 'bg-slate-50 border-slate-200'}`}>
+                    <div className="flex justify-between items-center text-xs font-bold">
+                      <span>{dir === 'BUY' ? 'Buy (Longs)' : 'Sell (Shorts)'}</span>
+                      <span className={item.pnl >= 0 ? 'text-emerald-500' : 'text-rose-500'}>
+                        {item.pnl >= 0 ? '+' : ''}{formatCurrency(item.pnl)}
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center text-[10px] text-slate-500 mt-1">
+                      <span>Win Rate ({item.total} trades)</span>
+                      <span className="text-blue-500 font-medium">{dirWinRate.toFixed(1)}%</span>
+                    </div>
                   </div>
-                  <div className="flex justify-between items-center text-[10px] text-slate-500 mt-1">
-                    <span>Win Rate Profile</span>
-                    <span className="text-blue-500 font-medium">{item.winRate}</span>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </section>
 
-          {/* 9. Time Analytics - Day of Week */}
           <section className={`md:col-span-2 p-4 rounded-xl border ${isDark ? 'bg-[#121926]/40 border-slate-900' : 'bg-white border-slate-100'}`}>
-            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3">9. Time Analytics (Day of Week Performance)</h3>
-            <div className="space-y-2.5">
-              {dayOfWeekAnalytics.map((item, i) => (
-                <div key={i} className="space-y-1">
-                  <div className="flex justify-between text-xs font-medium">
-                    <span>{item.day}</span>
-                    <span className="text-blue-500 font-bold">{item.winRate} Win Rate</span>
-                  </div>
-                  <div className={`w-full h-1.5 rounded-full ${isDark ? 'bg-slate-800' : 'bg-slate-200'}`}>
-                    <div 
-                      className={`h-full rounded-full transition-all duration-500 ${item.progress >= 70 ? 'bg-emerald-500' : item.progress >= 40 ? 'bg-blue-500' : 'bg-rose-500'}`} 
-                      style={{ width: `${item.progress}%` }}
-                    />
-                  </div>
-                </div>
-              ))}
+            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3">9. System Information</h3>
+            <div className="p-4 rounded-lg flex items-center justify-center border border-dashed border-slate-800 text-xs text-slate-500 h-32">
+              Advanced charts and sample period maps are active with real-time logging triggers.
             </div>
           </section>
         </div>
 
-        {/* 10. PSYCHOLOGY ANALYTICS (PROUD OUTSTANDING DIFFERENTIATOR) */}
+        {/* 10. PSYCHOLOGY ANALYTICS */}
         <section className={`p-5 rounded-xl border ${isDark ? 'bg-[#121926]/40 border-slate-900' : 'bg-white border-slate-100'}`}>
           <div className="flex flex-col sm:flex-row justify-between sm:items-center mb-4">
             <div>
-              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">10. Psychology & Behavioral Discipline Analytics</h3>
-              <p className="text-[10px] text-slate-500">Core metrics computed from mandatory mental trigger tracking logs</p>
+              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">10. Psychology Analytics</h3>
+              <p className="text-[10px] text-slate-500">Core metrics computed from mental trigger tracking logs</p>
             </div>
             <span className="text-[9px] font-black uppercase tracking-widest bg-blue-500/10 text-blue-400 px-2.5 py-1 rounded-md mt-1 sm:mt-0">
               Tradejai Core Engine
             </span>
           </div>
 
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-            {psychologyAnalytics.map((item, i) => (
-              <div key={i} className={`p-3.5 rounded-xl border text-center transition-all ${isDark ? 'bg-[#0b121f]/40 border-slate-900 hover:border-slate-800' : 'bg-slate-50/50 border-slate-200 hover:border-slate-300'}`}>
-                <span className={`text-lg font-black tracking-tight ${item.color}`}>{item.winRate}</span>
-                <h4 className="text-xs font-bold mt-1 truncate">{item.emotion}</h4>
-                <p className="text-[10px] text-slate-500 mt-0.5">{item.trades} logged trades</p>
-              </div>
-            ))}
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+            {analytics.psychology.length === 0 ? (
+              <div className="col-span-full py-4 text-center text-slate-500 text-xs">No psychology tags logged yet</div>
+            ) : (
+              analytics.psychology.map((item, i) => {
+                const isGoodTag = ['Disciplined', 'Patient', 'Calm', 'Focused', 'Confident'].includes(item.tag);
+                return (
+                  <div key={i} className={`p-3.5 rounded-xl border text-center transition-all ${isDark ? 'bg-[#0b121f]/40 border-slate-900 hover:border-slate-800' : 'bg-slate-50/50 border-slate-200 hover:border-slate-300'}`}>
+                    <span className={`text-lg font-black tracking-tight ${isGoodTag ? 'text-emerald-500' : 'text-rose-400'}`}>
+                      {item.winRate.toFixed(1)}%
+                    </span>
+                    <h4 className="text-xs font-bold mt-1 truncate">{item.tag}</h4>
+                    <p className="text-[10px] text-slate-500 mt-0.5">{item.count} trades logged</p>
+                    <p className={`text-[10px] font-medium mt-1 ${item.netPnl >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
+                      {item.netPnl >= 0 ? '+' : ''}{formatCurrency(item.netPnl)}
+                    </p>
+                  </div>
+                );
+              })
+            )}
           </div>
         </section>
 
       </main>
 
-      {/* FIXED BOTTOM NAVIGATION CHIP ENGINE */}
       <BottomNav isDark={isDark} />
     </div>
   );
